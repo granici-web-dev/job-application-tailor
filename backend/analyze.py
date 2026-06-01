@@ -6,6 +6,7 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.errors import JobAnalysisError
+from backend.llm import complete
 from backend.models import JobAnalysis
 
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "analyze.md"
@@ -16,7 +17,7 @@ ANALYSIS_ATTEMPTS = 2
 def analyze_job(job_text: str, *, client: Anthropic, model: str) -> JobAnalysis:
     system_prompt = _load_system_prompt()
     for attempt in range(ANALYSIS_ATTEMPTS):
-        raw = _request_analysis(client, model, system_prompt, job_text)
+        raw = complete(client, model=model, system=system_prompt, user=job_text, max_tokens=MAX_TOKENS)
         try:
             data = json.loads(_strip_json_fences(raw))
         except json.JSONDecodeError:
@@ -27,16 +28,6 @@ def analyze_job(job_text: str, *, client: Anthropic, model: str) -> JobAnalysis:
                 )
             continue
         return JobAnalysis.from_response_dict(data)
-
-
-def _request_analysis(client: Anthropic, model: str, system_prompt: str, job_text: str) -> str:
-    message = client.messages.create(
-        model=model,
-        max_tokens=MAX_TOKENS,
-        system=system_prompt,
-        messages=[{"role": "user", "content": job_text}],
-    )
-    return "".join(block.text for block in message.content if block.type == "text")
 
 
 def _strip_json_fences(text: str) -> str:

@@ -15,3 +15,7 @@ class JobFetchError(TailorError):
 
 class JobAnalysisError(TailorError):
     pass
+
+
+class ProfileError(TailorError):
+    pass
