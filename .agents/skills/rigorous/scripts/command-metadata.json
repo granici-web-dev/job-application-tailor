@@ -1,0 +1,54 @@
+{
+  "teach": {
+    "description": "Interactive setup of PRINCIPLES.md / STACK.md / TESTING.md. Asks the team's engineering posture in question batches, then writes the three durable standards files. Run once per project.",
+    "argumentHint": ""
+  },
+  "document": {
+    "description": "Reverse-engineer PRINCIPLES.md / STACK.md / TESTING.md from existing code. Use on mature codebases where you don't want to interrogate the user — read the project state and infer the conventions.",
+    "argumentHint": ""
+  },
+  "shape": {
+    "description": "Plan a feature or change before writing code. Produces a one-page plan (goal, approach, files, schema, test plan, tradeoffs) and waits for user approval. Required for non-trivial craft / tdd.",
+    "argumentHint": "[feature description]"
+  },
+  "craft": {
+    "description": "Implement an approved shape end-to-end. Builds in dependency order, runs typecheck + tests at each layer, verifies behavior. Refuses to start without a confirmed shape plan for non-trivial work.",
+    "argumentHint": "[feature description]"
+  },
+  "tdd": {
+    "description": "Strict red-green-refactor cycle. One failing test → minimal code → refactor → repeat. Use when the project's TESTING.md mandates TDD or when the user asks for it explicitly.",
+    "argumentHint": "[feature description]"
+  },
+  "critique": {
+    "description": "Acid review of code — what's complicated, what can be cut, what abstractions don't earn their place. Output is a prioritized list of issues with file/line/fix/severity. Different from audit (technical) — this targets readability and design.",
+    "argumentHint": "[target file or area]"
+  },
+  "audit": {
+    "description": "Technical audit. Performance bottlenecks, security issues (OWASP top 10), dependency health, concurrency / data integrity, observability gaps. Output: prioritized findings with severity and fix.",
+    "argumentHint": "[target subsystem]"
+  },
+  "architect": {
+    "description": "System-design review at the subsystem level. Maps modules + dependencies, traces data/control flow, evaluates abstraction lines, consistency story, failure model. Returns strengths + weaknesses + actionable changes.",
+    "argumentHint": "[subsystem]"
+  },
+  "simplify": {
+    "description": "Strip code to its essence. Removes dead code, premature abstractions, unnecessary state and indirection. Behavior must not change. Different from refactor (which restructures).",
+    "argumentHint": "[target file or area]"
+  },
+  "harden": {
+    "description": "Add error handling, edge cases, observability, idempotency — but only where it earns its place. Targets boundaries, external dependencies, and observability. Avoids defensive cargo.",
+    "argumentHint": "[target file or area]"
+  },
+  "refactor": {
+    "description": "Restructure code without changing behavior. Small steps, tests after each. Catalog: rename, extract, move, split phase, replace conditional, guard clauses. Different from simplify (which removes).",
+    "argumentHint": "[target file or area]"
+  },
+  "debug": {
+    "description": "Systematic root-cause investigation. Reproduce → hypothesize → test hypothesis → trace upstream → minimum fix → regression test. Refuses symptom-suppressing patches.",
+    "argumentHint": "[issue description or test failure]"
+  },
+  "optimize": {
+    "description": "Profile-driven performance work. Define metric + target, measure baseline, profile, hypothesize, fix, re-measure, add regression guard. Refuses to optimize without measurement.",
+    "argumentHint": "[target endpoint, query, or bottleneck]"
+  }
+}

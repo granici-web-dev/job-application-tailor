@@ -1,0 +1,35 @@
+{
+  "name": "@corlab-tech/rigorous",
+  "version": "0.1.0",
+  "description": "Engineering counterpart of impeccable. One skill, 14 commands, 3 standards files. Disciplined code, low-ceremony, opinionated.",
+  "keywords": [
+    "claude",
+    "claude-code",
+    "skill",
+    "agent-skill",
+    "engineering",
+    "code-quality",
+    "code-review",
+    "tdd",
+    "refactor",
+    "debugging"
+  ],
+  "homepage": "https://rigorous.corlab.tech",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CoRLab-Tech/rigorous.git"
+  },
+  "bugs": {
+    "url": "https://github.com/CoRLab-Tech/rigorous/issues"
+  },
+  "license": "Apache-2.0",
+  "author": "Corlab Tech",
+  "files": [
+    "SKILL.md",
+    "README.md",
+    "LICENSE",
+    "reference",
+    "scripts",
+    "templates"
+  ]
+}

@@ -1,0 +1,28 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: docker/backend.Dockerfile
+    env_file: .env                     # ANTHROPIC_API_KEY=...
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app/backend         # live-reload кода
+      - ./prompts:/app/prompts
+      - ./profile:/app/profile:ro      # твои исходники (только чтение)
+      - ./output:/app/output           # сюда попадут PDF и Excel (видно на хосте)
+    command: uvicorn backend.api:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    image: node:20-slim                # отдельный Dockerfile не нужен
+    working_dir: /app
+    environment:
+      - CHOKIDAR_USEPOLLING=true       # надёжный HMR внутри Docker
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules              # не затирать модули контейнера хостовой папкой
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - backend

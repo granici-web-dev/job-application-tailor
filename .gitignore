@@ -1,0 +1,30 @@
+# Secrets
+.env
+.env.local
+.env.*.local
+.env.production
+*.key
+*.pem
+
+# macOS
+.DS_Store
+._*
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Node
+node_modules/
+.next/
+
+# Logs
+*.log
+EOF
+
+

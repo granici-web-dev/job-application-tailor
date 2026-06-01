@@ -1,0 +1,46 @@
+# Master shape — ops/docs consolidation (Constitutional Map)
+
+> The contract for the from-trd series. Every concern below has exactly one canonical
+> owner doc; every other doc points to it by link and never restates it. Restating a
+> rule outside its owner is a defect.
+>
+> Spec: `{{trd_path}}` ({{trd_language}}) · Requirements: {{uc_count}} · Mode: {{mode}}
+> Ratified by: {{ratified_by}} on {{ratified_date}}
+
+## Goal
+
+One owner per concern, so every rule in the spec has a traceable home and staleness becomes structurally impossible.
+
+## Constitutional Map
+
+| Concern | Canonical owner | Everyone else |
+|---|---|---|
+| How we work (commit discipline, naming, shape→craft→critique, LOC thresholds, slash commands) | `{{posture_docs.workflow}}` | link only |
+| How the system looks (services, ports, schemas, flows) | `{{posture_docs.architecture}}` | link only |
+| Tech pinned + rationale (no version overrides in shapes) | `{{posture_docs.stack}}` | link only |
+| Test posture (what's worth testing, mocking policy, coverage) | `{{posture_docs.testing}}` | link only |
+| Engineering principles (abstraction, comments, error handling, what to refuse) | `{{posture_docs.principles}}` | link only |
+| Read-order at session start | `{{posture_docs.workflow}}` §0 | link only |
+| Project state (status / shapes-index / roadmap) | generated meta-docs | never hand-edited |
+| Terminology glossary | `{{posture_docs.workflow}}` §Glossary | link only |
+| Canonical design system | `{{posture_docs.design}}` | STACK / ARCHITECTURE refer only |
+| Canonical shape catalog | `{{shape_filename_pattern}}` | phase-style shapes deprecated |
+
+## PR series
+
+Each row lands as one focused PR with its own sub-shape (`{{shape_dir}}/{{master_basename}}-prN.md`).
+
+| PR | Scope | Owner doc(s) touched |
+|---|---|---|
+| PR-1 | Sync architecture with live code | `{{posture_docs.architecture}}` |
+| PR-2 | Posture single-owner consolidation | `{{posture_docs.principles}}`, `{{posture_docs.workflow}}` |
+| PR-3 | Shape catalog cleanup | shapes |
+| PR-4 | Meta-docs generator | `tools/scripts/refresh-docs-status.mjs` |
+| PR-5 | JIT extraction policy | `{{posture_docs.workflow}}` §Shape naming |
+| PR-6 | Translation pass (optional) | all prose docs |
+
+> Greenfield runs collapse PR-1/3/5 (no live code, no existing shape catalog) into the greenfield track; the owner table above is authored fresh rather than reconciled.
+
+## Open questions
+
+<concerns whose ownership is contested; the user resolves these before the series starts>

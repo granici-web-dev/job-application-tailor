@@ -1,0 +1,19 @@
+## What & why
+
+<!-- one or two sentences; link the requirement and its shape -->
+
+## Gate checklist
+
+The PR gate (CI) blocks merge until these hold:
+
+- [ ] `{{command_prefix}}rigorous critique` run on the diff; block-level findings fixed
+- [ ] e2e test covers the delivered functionality, with **no mocks** (real services via test containers) — required when app code changes
+- [ ] docs canon up to date (`pnpm docs:check` passes)
+
+## Screenshots
+
+<!--
+Required when this PR touches the frontend ({{pr_gate.frontend_prefix}}**).
+Paste the image(s) directly here so they render in the description. CI fails a
+frontend PR with no visible image.
+-->
