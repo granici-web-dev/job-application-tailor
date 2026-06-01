@@ -6,15 +6,17 @@ export function App() {
   return (
     <div className="app-shell">
       <header className="top-nav">
-        <span className="wordmark">Job Application Tailor</span>
-        <nav className="nav-links">
-          <NavLink to="/generate" className={navClass}>
-            Сгенерировать
-          </NavLink>
-          <NavLink to="/applications" className={navClass}>
-            Заявки
-          </NavLink>
-        </nav>
+        <div className="nav-inner">
+          <span className="wordmark">Job Application Tailor</span>
+          <nav className="nav-links">
+            <NavLink to="/generate" className={navClass}>
+              Сгенерировать
+            </NavLink>
+            <NavLink to="/applications" className={navClass}>
+              Заявки
+            </NavLink>
+          </nav>
+        </div>
       </header>
       <Routes>
         <Route path="/" element={<Navigate to="/generate" replace />} />
