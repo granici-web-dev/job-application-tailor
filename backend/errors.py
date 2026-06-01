@@ -19,3 +19,7 @@ class JobAnalysisError(TailorError):
 
 class ProfileError(TailorError):
     pass
+
+
+class TrackerError(TailorError):
+    pass
