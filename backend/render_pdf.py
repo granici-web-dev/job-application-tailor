@@ -50,9 +50,7 @@ h2 {
   font-size: 11pt;
   font-weight: 600;
   color: #111111;
-  margin: 13pt 0 5pt;
-  padding-bottom: 2pt;
-  border-bottom: 1px solid #e5e7eb;
+  margin: 14pt 0 5pt;
 }
 h2:first-of-type {
   clear: both;
