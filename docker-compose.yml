@@ -18,6 +18,7 @@ services:
     working_dir: /app
     environment:
       - CHOKIDAR_USEPOLLING=true # надёжный HMR внутри Docker
+      - VITE_API_URL=http://localhost:8010 # бэкенд виден браузеру на порту хоста
     ports:
       - "5173:5173"
     volumes:
