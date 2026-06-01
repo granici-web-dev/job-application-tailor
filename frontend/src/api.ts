@@ -22,6 +22,7 @@ export interface Application {
   status: string
   created_on: string
   hidden: boolean
+  location: string | null
   files: FileLinks | null
 }
 

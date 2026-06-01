@@ -19,7 +19,7 @@ const EMPLOYMENT_LABELS: Record<string, string> = {
   unknown: 'н/д',
 }
 
-const COLUMN_COUNT = 8
+const COLUMN_COUNT = 9
 
 export function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([])
@@ -152,6 +152,7 @@ export function ApplicationsPage() {
                 <th>Вакансия</th>
                 <th>Тип</th>
                 <th>Должность</th>
+                <th>Город</th>
                 <th>Статус</th>
                 <th>Дата</th>
                 <th aria-label="Действия" />
@@ -221,6 +222,9 @@ function ApplicationRow({ application, pending, onToggleStatus, onToggleVisibili
       </td>
       <td>{EMPLOYMENT_LABELS[application.employment_type] ?? application.employment_type}</td>
       <td className="title-cell">{application.job_title}</td>
+      <td className="cell-city" title={application.location ?? undefined}>
+        {application.location ?? '—'}
+      </td>
       <td>
         <button
           type="button"
