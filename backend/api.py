@@ -71,6 +71,7 @@ class ApplicationResponse(BaseModel):
     status: str
     created_on: str
     hidden: bool
+    location: str | None
     files: dict[str, str] | None
 
 
@@ -201,6 +202,7 @@ def _to_response(application: Application) -> ApplicationResponse:
         status=application.status,
         created_on=application.created_on,
         hidden=application.hidden,
+        location=application.location,
         files=files,
     )
 

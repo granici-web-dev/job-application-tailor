@@ -20,6 +20,7 @@ ANALYSIS_JSON = json.dumps(
         "job_title": "Senior Backend Engineer",
         "employment_type": "remote",
         "employee_count": None,
+        "location": "Wien, Österreich",
         "hard_skills": ["Python", "FastAPI"],
         "keywords": ["Python"],
     }
@@ -99,6 +100,7 @@ def test_run_pipeline_collision_creates_suffixed_dir(tmp_path):
     applications = read_applications(tmp_path / "applications_tracker.xlsx")
     assert applications[0].cv_file.startswith("Acme_GmbH/")
     assert applications[1].cv_file.startswith("Acme_GmbH_2/")
+    assert applications[0].location == "Wien, Österreich"
 
 
 def _images(pdf_path):

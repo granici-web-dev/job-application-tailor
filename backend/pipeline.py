@@ -88,6 +88,7 @@ def run_pipeline(
         created_on=today,
         cv_file=f"{company_dir.name}/{cv_pdf_path.name}",
         cover_letter_file=f"{company_dir.name}/{cover_letter_pdf_path.name}",
+        location=analysis.location,
     )
     logger.info("Appended tracker row %d", tracker_row)
 

@@ -19,6 +19,7 @@ STATUS_HEADER = "Статус"
 HIDDEN_HEADER = "Скрыто"
 CV_FILE_HEADER = "Файл CV"
 COVER_LETTER_FILE_HEADER = "Файл письма"
+LOCATION_HEADER = "Локация"
 HEADERS = [
     "Название фирмы",
     "Сколько работников",
@@ -30,6 +31,7 @@ HEADERS = [
     HIDDEN_HEADER,
     CV_FILE_HEADER,
     COVER_LETTER_FILE_HEADER,
+    LOCATION_HEADER,
 ]
 STATUS_COLUMN_INDEX = HEADERS.index(STATUS_HEADER) + 1
 STATUS_COLUMN = get_column_letter(STATUS_COLUMN_INDEX)
@@ -37,12 +39,13 @@ HIDDEN_COLUMN_INDEX = HEADERS.index(HIDDEN_HEADER) + 1
 HIDDEN_COLUMN = get_column_letter(HIDDEN_COLUMN_INDEX)
 CV_FILE_COLUMN_INDEX = HEADERS.index(CV_FILE_HEADER) + 1
 COVER_LETTER_FILE_COLUMN_INDEX = HEADERS.index(COVER_LETTER_FILE_HEADER) + 1
+LOCATION_COLUMN_INDEX = HEADERS.index(LOCATION_HEADER) + 1
 STATUS_SENT = "ОТПРАВЛЕНО"
 STATUS_NOT_SENT = "НЕ ОТПРАВЛЕНО"
 STATUS_RANGE = f"{STATUS_COLUMN}2:{STATUS_COLUMN}1000"
 ALLOWED_STATUSES = frozenset({STATUS_SENT, STATUS_NOT_SENT})
 EMPLOYEE_COUNT_UNKNOWN = "н/д"
-COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14, "H": 10, "I": 44, "J": 44}
+COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14, "H": 10, "I": 44, "J": 44, "K": 28}
 DATA_START_ROW = 2
 
 
@@ -59,6 +62,7 @@ class Application:
     hidden: bool
     cv_file: str | None
     cover_letter_file: str | None
+    location: str | None
 
 
 def append_application(
@@ -69,6 +73,7 @@ def append_application(
     created_on: date,
     cv_file: str | None = None,
     cover_letter_file: str | None = None,
+    location: str | None = None,
 ) -> int:
     workbook = _open_or_create(tracker_path)
     sheet = workbook.active
@@ -85,6 +90,7 @@ def append_application(
             False,
             cv_file,
             cover_letter_file,
+            location,
         ]
     )
     appended_row = sheet.max_row
@@ -98,6 +104,7 @@ def read_applications(tracker_path: Path, *, include_hidden: bool = False) -> li
     sheet = _load_workbook(tracker_path).active
     has_hidden_column = sheet.cell(row=1, column=HIDDEN_COLUMN_INDEX).value == HIDDEN_HEADER
     has_file_columns = sheet.cell(row=1, column=CV_FILE_COLUMN_INDEX).value == CV_FILE_HEADER
+    has_location_column = sheet.cell(row=1, column=LOCATION_COLUMN_INDEX).value == LOCATION_HEADER
     applications = []
     for row in range(DATA_START_ROW, sheet.max_row + 1):
         values = [sheet.cell(row=row, column=column).value for column in range(1, len(HEADERS) + 1)]
@@ -119,6 +126,7 @@ def read_applications(tracker_path: Path, *, include_hidden: bool = False) -> li
                 hidden=hidden,
                 cv_file=_cell_optional(values[CV_FILE_COLUMN_INDEX - 1]) if has_file_columns else None,
                 cover_letter_file=_cell_optional(values[COVER_LETTER_FILE_COLUMN_INDEX - 1]) if has_file_columns else None,
+                location=_cell_optional(values[LOCATION_COLUMN_INDEX - 1]) if has_location_column else None,
             )
         )
     return applications

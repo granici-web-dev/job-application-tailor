@@ -54,6 +54,7 @@ def _seed_application(
     company: str,
     cv_file: str | None = None,
     cover_letter_file: str | None = None,
+    location: str | None = None,
 ) -> int:
     analysis = JobAnalysis.from_response_dict(
         {"company_name": company, "job_title": "Engineer", "employment_type": "remote"}
@@ -65,6 +66,7 @@ def _seed_application(
         created_on=date(2026, 6, 1),
         cv_file=cv_file,
         cover_letter_file=cover_letter_file,
+        location=location,
     )
 
 
@@ -234,6 +236,20 @@ def test_legacy_row_returns_null_file_links(client):
 
     row = client.get("/applications").json()[0]
     assert row["files"] is None
+
+
+def test_applications_include_location(client):
+    _seed_application(client.output_dir, "Acme", location="Wien, Österreich")
+
+    row = client.get("/applications").json()[0]
+    assert row["location"] == "Wien, Österreich"
+
+
+def test_legacy_row_returns_null_location(client):
+    _seed_application(client.output_dir, "Acme")
+
+    row = client.get("/applications").json()[0]
+    assert row["location"] is None
 
 
 def test_files_missing_returns_404(client):

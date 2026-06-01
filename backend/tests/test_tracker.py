@@ -13,6 +13,7 @@ from backend.tracker import (
     EMPLOYEE_COUNT_UNKNOWN,
     HEADERS,
     HIDDEN_HEADER,
+    LOCATION_HEADER,
     STATUS_NOT_SENT,
     STATUS_SENT,
     append_application,
@@ -85,6 +86,7 @@ def test_append_adds_row_with_values_and_na_employee_count(tmp_path):
         False,
         None,
         None,
+        None,
     ]
 
 
@@ -106,17 +108,18 @@ def test_status_column_dropdown_is_bound_to_the_status_column(tmp_path):
     append_application(path, _analysis(), job_url="https://x/1", created_on=date(2026, 6, 1))
     sheet = load_workbook(path).active
 
-    status_column = next(cell.column_letter for cell in sheet[1] if cell.value == "Статус")
-    hidden_column = next(cell.column_letter for cell in sheet[1] if cell.value == HIDDEN_HEADER)
-    assert status_column == "F"
-    assert hidden_column == "H"
+    columns = {cell.value: cell.column_letter for cell in sheet[1]}
+    assert columns["Статус"] == "F"
+    assert columns[HIDDEN_HEADER] == "H"
+    assert columns[CV_FILE_HEADER] == "I"
+    assert columns[COVER_LETTER_FILE_HEADER] == "J"
+    assert columns[LOCATION_HEADER] == "K"
 
     status_dropdowns = [
         dv for dv in sheet.data_validations.dataValidation if dv.formula1 and "ОТПРАВЛЕНО" in dv.formula1
     ]
     assert len(status_dropdowns) == 1
-    assert str(status_dropdowns[0].sqref) == f"{status_column}2:{status_column}1000"
-    assert hidden_column not in str(status_dropdowns[0].sqref)
+    assert str(status_dropdowns[0].sqref) == "F2:F1000"
     assert "НЕ ОТПРАВЛЕНО" in status_dropdowns[0].formula1
 
 
@@ -186,6 +189,7 @@ def test_legacy_tracker_without_hidden_column_backfilled_on_write(tmp_path):
     assert sheet.cell(row=3, column=8).value is False
     assert sheet.cell(row=1, column=9).value == CV_FILE_HEADER
     assert sheet.cell(row=1, column=10).value == COVER_LETTER_FILE_HEADER
+    assert sheet.cell(row=1, column=11).value == LOCATION_HEADER
 
     status_dropdowns = [
         dv for dv in sheet.data_validations.dataValidation if dv.formula1 and "ОТПРАВЛЕНО" in dv.formula1
@@ -228,6 +232,26 @@ def test_read_legacy_row_has_no_file_paths(tmp_path):
     application = read_applications(path)[0]
     assert application.cv_file is None
     assert application.cover_letter_file is None
+
+
+def test_append_stores_and_reads_location(tmp_path):
+    path = tmp_path / "tracker.xlsx"
+    append_application(
+        path,
+        _analysis(),
+        job_url="https://x/1",
+        created_on=date(2026, 6, 1),
+        location="Wien, Österreich",
+    )
+
+    assert read_applications(path)[0].location == "Wien, Österreich"
+
+
+def test_read_legacy_row_has_no_location(tmp_path):
+    path = tmp_path / "tracker.xlsx"
+    _legacy_tracker(path)
+
+    assert read_applications(path)[0].location is None
 
 
 def _company_folder_with_pdfs(output_dir, folder, full_name):
