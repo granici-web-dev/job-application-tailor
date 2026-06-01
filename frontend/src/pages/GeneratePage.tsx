@@ -9,6 +9,8 @@ const LOADING_STEPS = ['Анализ вакансии', 'Адаптация CV �
 
 export function GeneratePage() {
   const [url, setUrl] = useState('')
+  const [text, setText] = useState('')
+  const [showText, setShowText] = useState(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState('')
@@ -38,7 +40,12 @@ export function GeneratePage() {
     setResult(null)
     setDownloadError('')
     try {
-      const data = await generateApplication({ url: trimmed })
+      const payload: { url: string; text?: string } = { url: trimmed }
+      const trimmedText = text.trim()
+      if (trimmedText) {
+        payload.text = trimmedText
+      }
+      const data = await generateApplication(payload)
       setResult(data)
       setPhase('success')
     } catch (caught) {
@@ -87,6 +94,39 @@ export function GeneratePage() {
           {loading ? 'Генерация…' : 'Сгенерировать'}
         </button>
       </form>
+
+      <button
+        type="button"
+        className="text-toggle"
+        aria-expanded={showText}
+        aria-controls="job-text"
+        onClick={() => setShowText((open) => !open)}
+        disabled={loading}
+      >
+        {showText ? 'Скрыть ручной ввод' : 'Сайт не открывается? Вставить описание вручную'}
+      </button>
+
+      {showText && (
+        <div className="manual-text">
+          <label htmlFor="job-text" className="manual-label">
+            Текст вакансии
+          </label>
+          <p id="job-text-hint" className="manual-hint">
+            Если страница не скачивается (Indeed, LinkedIn, SPA), вставьте описание вручную. Ссылка всё равно
+            сохранится в трекере и попадёт в запрос.
+          </p>
+          <textarea
+            id="job-text"
+            className="text-area"
+            rows={8}
+            placeholder="Вставьте полный текст вакансии"
+            value={text}
+            onChange={(event) => setText(event.target.value)}
+            disabled={loading}
+            aria-describedby="job-text-hint"
+          />
+        </div>
+      )}
 
       {loading && (
         <section className="loading-block" aria-live="polite">

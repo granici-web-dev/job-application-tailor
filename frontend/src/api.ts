@@ -47,7 +47,7 @@ async function errorMessage(response: Response): Promise<string> {
   return `Ошибка запроса (${response.status}).`
 }
 
-export async function generateApplication(input: { url: string }): Promise<GenerateResult> {
+export async function generateApplication(input: { url: string; text?: string }): Promise<GenerateResult> {
   const response = await fetch(`${API_URL}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
