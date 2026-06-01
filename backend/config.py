@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from backend.errors import ConfigError
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
+DEFAULT_FRONTEND_ORIGIN = "http://localhost:5173"
 
 
 @dataclass(frozen=True)
@@ -31,3 +32,11 @@ def load_settings() -> Settings:
 
 def make_anthropic_client(settings: Settings) -> Anthropic:
     return Anthropic(api_key=settings.anthropic_api_key)
+
+
+def frontend_origins() -> list[str]:
+    load_dotenv()
+    raw = os.environ.get("FRONTEND_ORIGIN", "").strip()
+    if not raw:
+        return [DEFAULT_FRONTEND_ORIGIN]
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]

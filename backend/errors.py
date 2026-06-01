@@ -23,3 +23,7 @@ class ProfileError(TailorError):
 
 class TrackerError(TailorError):
     pass
+
+
+class ApplicationNotFoundError(TailorError):
+    pass
