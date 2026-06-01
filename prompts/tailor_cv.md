@@ -5,6 +5,7 @@ Return ONLY the CV in Markdown. No preamble, no explanation, no code fences.
 Grounding rules (these override everything else):
 - Use only experience, skills, tools, and achievements that already appear in the candidate's master CV.
 - Never add a skill, tool, technology, or keyword from the job analysis that does not already appear in the candidate profile, even if the job explicitly asks for it.
+- Use only technical terms and technology names that appear verbatim in the master CV. Never coin a new term to sound more relevant, for example do not write Middleware or Middleware-Anbindungen when the master CV describes the work as integrating APIs. Rephrase the terms that are already there, never rename them into something the CV does not say.
 - Never add soft skills or generic qualities that are not in the master CV (for example kommunikationsstark, teamorientiert, Lernbereitschaft, motiviert, durchsetzungsstark). If the master CV does not state a quality, leave it out.
 - Do not invent employers, job titles, dates, degrees, certifications, or results. Never inflate seniority or scope.
 - ATS optimization means selecting, reordering, and rephrasing real content to match the job, not fabricating content.

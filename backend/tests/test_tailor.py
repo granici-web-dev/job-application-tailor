@@ -79,6 +79,13 @@ def test_cv_prompt_forbids_invented_soft_skills():
     assert "kommunikationsstark" in system_prompt
 
 
+def test_cv_prompt_forbids_terms_not_in_master_cv():
+    system_prompt, _ = build_cv_prompt(ANALYSIS, PROFILE)
+
+    assert "verbatim in the master CV" in system_prompt
+    assert "Middleware" in system_prompt
+
+
 def test_letter_prompt_carries_no_fabrication_rule_and_template():
     system_prompt, user_message = build_letter_prompt(ANALYSIS, PROFILE)
 
