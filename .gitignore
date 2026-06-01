@@ -25,3 +25,7 @@ node_modules/
 
 # Logs
 *.log
+
+# Personal data and generated output
+profile/
+output/
