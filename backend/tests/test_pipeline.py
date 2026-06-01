@@ -10,6 +10,7 @@ import pypdf
 from openpyxl import load_workbook
 
 from backend.pipeline import run_pipeline
+from backend.tracker import read_applications
 
 PROFILE_DIR = Path(__file__).parent / "fixtures" / "profile"
 
@@ -94,6 +95,10 @@ def test_run_pipeline_collision_creates_suffixed_dir(tmp_path):
     assert first.company_dir == tmp_path / "Acme_GmbH"
     assert second.company_dir == tmp_path / "Acme_GmbH_2"
     assert second.tracker_row == 3
+
+    applications = read_applications(tmp_path / "applications_tracker.xlsx")
+    assert applications[0].cv_file.startswith("Acme_GmbH/")
+    assert applications[1].cv_file.startswith("Acme_GmbH_2/")
 
 
 def _images(pdf_path):

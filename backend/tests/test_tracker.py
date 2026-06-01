@@ -8,12 +8,15 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from backend.errors import ApplicationNotFoundError, TrackerError
 from backend.models import JobAnalysis
 from backend.tracker import (
+    COVER_LETTER_FILE_HEADER,
+    CV_FILE_HEADER,
     EMPLOYEE_COUNT_UNKNOWN,
     HEADERS,
     HIDDEN_HEADER,
     STATUS_NOT_SENT,
     STATUS_SENT,
     append_application,
+    backfill_file_paths,
     read_applications,
     set_application_hidden,
 )
@@ -80,6 +83,8 @@ def test_append_adds_row_with_values_and_na_employee_count(tmp_path):
         STATUS_NOT_SENT,
         "2026-06-01",
         False,
+        None,
+        None,
     ]
 
 
@@ -179,6 +184,8 @@ def test_legacy_tracker_without_hidden_column_backfilled_on_write(tmp_path):
     assert sheet.cell(row=1, column=8).value == HIDDEN_HEADER
     assert sheet.cell(row=2, column=8).value is False
     assert sheet.cell(row=3, column=8).value is False
+    assert sheet.cell(row=1, column=9).value == CV_FILE_HEADER
+    assert sheet.cell(row=1, column=10).value == COVER_LETTER_FILE_HEADER
 
     status_dropdowns = [
         dv for dv in sheet.data_validations.dataValidation if dv.formula1 and "ОТПРАВЛЕНО" in dv.formula1
@@ -196,6 +203,61 @@ def test_read_legacy_tracker_treats_rows_as_active(tmp_path):
     assert len(applications) == 1
     assert applications[0].hidden is False
     assert applications[0].company_name == "Acme GmbH"
+
+
+def test_append_stores_and_reads_file_paths(tmp_path):
+    path = tmp_path / "tracker.xlsx"
+    append_application(
+        path,
+        _analysis(),
+        job_url="https://x/1",
+        created_on=date(2026, 6, 1),
+        cv_file="Acme_GmbH/CV_Ivan_Acme_GmbH.pdf",
+        cover_letter_file="Acme_GmbH/CoverLetter_Ivan_Acme_GmbH.pdf",
+    )
+
+    application = read_applications(path)[0]
+    assert application.cv_file == "Acme_GmbH/CV_Ivan_Acme_GmbH.pdf"
+    assert application.cover_letter_file == "Acme_GmbH/CoverLetter_Ivan_Acme_GmbH.pdf"
+
+
+def test_read_legacy_row_has_no_file_paths(tmp_path):
+    path = tmp_path / "tracker.xlsx"
+    _legacy_tracker(path)
+
+    application = read_applications(path)[0]
+    assert application.cv_file is None
+    assert application.cover_letter_file is None
+
+
+def _company_folder_with_pdfs(output_dir, folder, full_name):
+    company_dir = output_dir / folder
+    company_dir.mkdir(parents=True)
+    (company_dir / f"CV_{full_name}_{folder}.pdf").write_bytes(b"%PDF cv")
+    (company_dir / f"CoverLetter_{full_name}_{folder}.pdf").write_bytes(b"%PDF letter")
+
+
+def test_backfill_sets_link_for_unique_company_and_skips_collisions(tmp_path):
+    output_dir = tmp_path / "output"
+    output_dir.mkdir()
+    path = output_dir / "tracker.xlsx"
+
+    unique = append_application(path, _analysis(company_name="Weissenberg Group GmbH"), job_url="https://x/1", created_on=date(2026, 6, 1))
+    first_collision = append_application(path, _analysis(company_name="Jobriver HR Service"), job_url="https://x/2", created_on=date(2026, 6, 1))
+    second_collision = append_application(path, _analysis(company_name="Jobriver HR Service"), job_url="https://x/3", created_on=date(2026, 6, 1))
+
+    _company_folder_with_pdfs(output_dir, "Weissenberg_Group_GmbH", "Serghei_Granici")
+    _company_folder_with_pdfs(output_dir, "Jobriver_HR_Service", "Serghei_Granici")
+    _company_folder_with_pdfs(output_dir, "Jobriver_HR_Service_2", "Serghei_Granici")
+
+    backfilled = backfill_file_paths(path, output_dir)
+
+    assert backfilled == [unique]
+    by_id = {a.id: a for a in read_applications(path, include_hidden=True)}
+    assert by_id[unique].cv_file == "Weissenberg_Group_GmbH/CV_Serghei_Granici_Weissenberg_Group_GmbH.pdf"
+    assert by_id[unique].cover_letter_file == "Weissenberg_Group_GmbH/CoverLetter_Serghei_Granici_Weissenberg_Group_GmbH.pdf"
+    assert by_id[first_collision].cv_file is None
+    assert by_id[second_collision].cv_file is None
 
 
 def test_append_default_status_is_not_sent(tmp_path):

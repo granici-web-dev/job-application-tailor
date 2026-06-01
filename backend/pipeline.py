@@ -81,7 +81,14 @@ def run_pipeline(
     logger.info("Wrote %s and %s", cv_pdf_path.name, cover_letter_pdf_path.name)
 
     tracker_path = output_dir / TRACKER_FILENAME
-    tracker_row = append_application(tracker_path, analysis, job_url=job_url, created_on=today)
+    tracker_row = append_application(
+        tracker_path,
+        analysis,
+        job_url=job_url,
+        created_on=today,
+        cv_file=f"{company_dir.name}/{cv_pdf_path.name}",
+        cover_letter_file=f"{company_dir.name}/{cover_letter_pdf_path.name}",
+    )
     logger.info("Appended tracker row %d", tracker_row)
 
     return PipelineResult(

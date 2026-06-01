@@ -49,7 +49,12 @@ def _fake_client():
     return client
 
 
-def _seed_application(output_dir: Path, company: str) -> int:
+def _seed_application(
+    output_dir: Path,
+    company: str,
+    cv_file: str | None = None,
+    cover_letter_file: str | None = None,
+) -> int:
     analysis = JobAnalysis.from_response_dict(
         {"company_name": company, "job_title": "Engineer", "employment_type": "remote"}
     )
@@ -58,6 +63,8 @@ def _seed_application(output_dir: Path, company: str) -> int:
         analysis,
         job_url=f"https://example.com/{company}",
         created_on=date(2026, 6, 1),
+        cv_file=cv_file,
+        cover_letter_file=cover_letter_file,
     )
 
 
@@ -196,6 +203,37 @@ def test_patch_visibility_unknown_id_returns_404(client):
     _seed_application(client.output_dir, "Acme")
 
     assert client.patch("/applications/99/visibility", json={"hidden": True}).status_code == 404
+
+
+def test_applications_include_file_links(client):
+    _seed_application(
+        client.output_dir,
+        "Acme",
+        cv_file="Acme/CV_Ivan_Acme.pdf",
+        cover_letter_file="Acme/CoverLetter_Ivan_Acme.pdf",
+    )
+
+    row = client.get("/applications").json()[0]
+    assert row["files"] == {
+        "cv": "/files/Acme/CV_Ivan_Acme.pdf",
+        "cover_letter": "/files/Acme/CoverLetter_Ivan_Acme.pdf",
+    }
+
+
+def test_collision_rows_have_distinct_file_links(client):
+    _seed_application(client.output_dir, "Jobriver", cv_file="Jobriver/CV_Ivan_Jobriver.pdf", cover_letter_file="Jobriver/CoverLetter_Ivan_Jobriver.pdf")
+    _seed_application(client.output_dir, "Jobriver", cv_file="Jobriver_2/CV_Ivan_Jobriver.pdf", cover_letter_file="Jobriver_2/CoverLetter_Ivan_Jobriver.pdf")
+
+    rows = client.get("/applications").json()
+    cv_links = {row["files"]["cv"] for row in rows}
+    assert cv_links == {"/files/Jobriver/CV_Ivan_Jobriver.pdf", "/files/Jobriver_2/CV_Ivan_Jobriver.pdf"}
+
+
+def test_legacy_row_returns_null_file_links(client):
+    _seed_application(client.output_dir, "Acme")
+
+    row = client.get("/applications").json()[0]
+    assert row["files"] is None
 
 
 def test_files_missing_returns_404(client):

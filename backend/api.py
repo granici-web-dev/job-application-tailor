@@ -71,8 +71,7 @@ class ApplicationResponse(BaseModel):
     status: str
     created_on: str
     hidden: bool
-
-    model_config = {"from_attributes": True}
+    files: dict[str, str] | None
 
 
 class StatusUpdateRequest(BaseModel):
@@ -151,8 +150,9 @@ def generate(
 def list_applications(
     include_hidden: bool = False,
     paths: Paths = Depends(get_paths),
-) -> list[Application]:
-    return read_applications(paths.output_dir / TRACKER_FILENAME, include_hidden=include_hidden)
+) -> list[ApplicationResponse]:
+    applications = read_applications(paths.output_dir / TRACKER_FILENAME, include_hidden=include_hidden)
+    return [_to_response(application) for application in applications]
 
 
 @app.patch("/applications/{application_id}/status", response_model=ApplicationResponse)
@@ -160,10 +160,10 @@ def update_status(
     application_id: int,
     body: StatusUpdateRequest,
     paths: Paths = Depends(get_paths),
-) -> Application:
+) -> ApplicationResponse:
     tracker_path = paths.output_dir / TRACKER_FILENAME
     set_application_status(tracker_path, application_id, body.status)
-    return _find_application(tracker_path, application_id)
+    return _to_response(_find_application(tracker_path, application_id))
 
 
 @app.patch("/applications/{application_id}/visibility", response_model=ApplicationResponse)
@@ -171,10 +171,10 @@ def update_visibility(
     application_id: int,
     body: VisibilityUpdateRequest,
     paths: Paths = Depends(get_paths),
-) -> Application:
+) -> ApplicationResponse:
     tracker_path = paths.output_dir / TRACKER_FILENAME
     set_application_hidden(tracker_path, application_id, body.hidden)
-    return _find_application(tracker_path, application_id)
+    return _to_response(_find_application(tracker_path, application_id))
 
 
 def _find_application(tracker_path: Path, application_id: int) -> Application:
@@ -182,6 +182,27 @@ def _find_application(tracker_path: Path, application_id: int) -> Application:
         if application.id == application_id:
             return application
     raise ApplicationNotFoundError(f"No application with id {application_id} in the tracker.")
+
+
+def _to_response(application: Application) -> ApplicationResponse:
+    files = None
+    if application.cv_file and application.cover_letter_file:
+        files = {
+            "cv": f"/files/{application.cv_file}",
+            "cover_letter": f"/files/{application.cover_letter_file}",
+        }
+    return ApplicationResponse(
+        id=application.id,
+        company_name=application.company_name,
+        employee_count=application.employee_count,
+        job_url=application.job_url,
+        employment_type=application.employment_type,
+        job_title=application.job_title,
+        status=application.status,
+        created_on=application.created_on,
+        hidden=application.hidden,
+        files=files,
+    )
 
 
 @app.get("/files/{company}/{filename}")
