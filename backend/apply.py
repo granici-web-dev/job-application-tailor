@@ -30,6 +30,7 @@ def main(argv: list[str] | None = None) -> int:
             model=settings.model,
             language=args.lang,
             today=date.today(),
+            include_photo=args.include_photo,
         )
     except TailorError as error:
         print(str(error), file=sys.stderr)
@@ -66,6 +67,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         "--output-dir",
         default="output",
         help="Root output folder. Defaults to ./output.",
+    )
+    parser.add_argument(
+        "--no-photo",
+        dest="include_photo",
+        action="store_false",
+        help="Leave the photo out of the CV PDF, for portals that penalize photos.",
     )
     return parser.parse_args(argv)
 

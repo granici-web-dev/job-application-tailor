@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from backend.errors import ProfileError
-from backend.profile import load_profile
+from backend.profile import load_photo_bytes, load_profile
 
 FIXTURE_PROFILE = Path(__file__).parent / "fixtures" / "profile"
 
@@ -57,3 +57,32 @@ def test_load_profile_treats_missing_optional_fields_as_absent(tmp_path):
 
     assert profile.personal.phone is None
     assert profile.personal.languages == []
+
+
+def test_load_profile_defaults_photo_path():
+    profile = load_profile(FIXTURE_PROFILE)
+
+    assert profile.personal.photo_path == FIXTURE_PROFILE / "photo.jpg"
+
+
+def test_load_profile_reads_explicit_photo_path(tmp_path):
+    _write_profile(
+        tmp_path,
+        personal={"full_name": "Ivan", "email": "a@b.c", "photo": "assets/me.png"},
+    )
+
+    profile = load_profile(tmp_path)
+
+    assert profile.personal.photo_path == Path("assets/me.png")
+
+
+def test_load_photo_bytes_returns_none_when_missing(tmp_path):
+    assert load_photo_bytes(tmp_path / "nope.jpg") is None
+    assert load_photo_bytes(None) is None
+
+
+def test_load_photo_bytes_reads_existing_file(tmp_path):
+    photo = tmp_path / "photo.jpg"
+    photo.write_bytes(b"\xff\xd8\xff\xe0jpeg-bytes")
+
+    assert load_photo_bytes(photo) == b"\xff\xd8\xff\xe0jpeg-bytes"

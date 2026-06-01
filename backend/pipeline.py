@@ -10,8 +10,8 @@ from anthropic import Anthropic
 from backend.analyze import analyze_job
 from backend.fetch import fetch_job_text
 from backend.models import JobAnalysis
-from backend.profile import load_profile
-from backend.render_pdf import render_markdown_to_pdf
+from backend.profile import load_photo_bytes, load_profile
+from backend.render_pdf import CV_CSS, render_markdown_to_pdf
 from backend.tailor_cv import tailor_cv
 from backend.tailor_letter import tailor_letter
 from backend.tracker import append_application
@@ -43,6 +43,7 @@ def run_pipeline(
     model: str,
     language: str | None,
     today: date,
+    include_photo: bool = True,
 ) -> PipelineResult:
     if job_text is None:
         logger.info("Fetching job posting from %s", job_url)
@@ -59,7 +60,8 @@ def run_pipeline(
     cover_letter_markdown = tailor_letter(analysis, profile, client=client, model=model, language=language)
 
     logger.info("Rendering PDFs")
-    cv_pdf = render_markdown_to_pdf(cv_markdown)
+    photo = load_photo_bytes(profile.personal.photo_path)
+    cv_pdf = render_markdown_to_pdf(cv_markdown, css=CV_CSS, photo=photo, include_photo=include_photo)
     cover_letter_pdf = render_markdown_to_pdf(cover_letter_markdown)
 
     output_dir.mkdir(parents=True, exist_ok=True)

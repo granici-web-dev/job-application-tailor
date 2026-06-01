@@ -20,6 +20,7 @@ class PersonalInfo:
     linkedin: str | None
     github: str | None
     languages: list[str]
+    photo_path: Path | None = None
 
     def as_contact_lines(self) -> str:
         lines = [f"Full name: {self.full_name}", f"Email: {self.email}"]
@@ -46,10 +47,16 @@ class Profile:
 def load_profile(profile_dir: str | Path) -> Profile:
     directory = Path(profile_dir)
     return Profile(
-        personal=_load_personal(directory / PERSONAL_FILENAME),
+        personal=_load_personal(directory / PERSONAL_FILENAME, directory),
         master_cv_markdown=_read_required_text(directory / MASTER_CV_FILENAME),
         cover_letter_template=_read_required_text(directory / COVER_LETTER_TEMPLATE_FILENAME),
     )
+
+
+def load_photo_bytes(path: Path | None) -> bytes | None:
+    if path is None or not path.exists():
+        return None
+    return path.read_bytes()
 
 
 def _read_required_text(path: Path) -> str:
@@ -67,7 +74,7 @@ def _read_required_text(path: Path) -> str:
     return text
 
 
-def _load_personal(path: Path) -> PersonalInfo:
+def _load_personal(path: Path, profile_dir: Path) -> PersonalInfo:
     try:
         raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
@@ -81,6 +88,8 @@ def _load_personal(path: Path) -> PersonalInfo:
         raise ProfileError(
             f"Profile file {path.name} is not valid JSON ({error}). Fix the syntax and try again."
         )
+    photo_field = data.get("photo")
+    photo_path = Path(photo_field.strip()) if isinstance(photo_field, str) and photo_field.strip() else profile_dir / "photo.jpg"
     return PersonalInfo(
         full_name=_require_text(data, "full_name", path),
         email=_require_text(data, "email", path),
@@ -89,6 +98,7 @@ def _load_personal(path: Path) -> PersonalInfo:
         linkedin=_optional_text(data, "linkedin"),
         github=_optional_text(data, "github"),
         languages=_string_list(data.get("languages")),
+        photo_path=photo_path,
     )
 
 
