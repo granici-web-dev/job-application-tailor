@@ -9,6 +9,7 @@ from anthropic import Anthropic
 
 from backend.analyze import analyze_job
 from backend.fetch import fetch_job_text
+from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
 from backend.render_pdf import CV_CSS, render_markdown_to_pdf
@@ -57,7 +58,9 @@ def run_pipeline(
 
     logger.info("Tailoring CV and cover letter for %s", analysis.company_name)
     cv_markdown = tailor_cv(analysis, profile, client=client, model=model, language=language)
+    cv_markdown = humanize(cv_markdown, kind="cv", client=client, model=model)
     cover_letter_markdown = tailor_letter(analysis, profile, client=client, model=model, language=language)
+    cover_letter_markdown = humanize(cover_letter_markdown, kind="cover_letter", client=client, model=model)
 
     logger.info("Rendering PDFs")
     photo = load_photo_bytes(profile.personal.photo_path)

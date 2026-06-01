@@ -65,6 +65,20 @@ def test_cv_prompt_uses_explicit_language_when_given():
     assert "Write the CV in German." in user_message
 
 
+def test_cv_prompt_requires_posting_language_headings():
+    system_prompt, _ = build_cv_prompt(ANALYSIS, PROFILE)
+
+    assert "language of the job posting" in system_prompt
+    assert "Berufserfahrung" in system_prompt
+
+
+def test_cv_prompt_forbids_invented_soft_skills():
+    system_prompt, _ = build_cv_prompt(ANALYSIS, PROFILE)
+
+    assert "soft skills" in system_prompt.lower()
+    assert "kommunikationsstark" in system_prompt
+
+
 def test_letter_prompt_carries_no_fabrication_rule_and_template():
     system_prompt, user_message = build_letter_prompt(ANALYSIS, PROFILE)
 

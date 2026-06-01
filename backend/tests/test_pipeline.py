@@ -29,12 +29,18 @@ def _message(text):
     return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
 
 
+CV_MARKDOWN = "# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
+LETTER_MARKDOWN = "Dear Acme GmbH team,\n\nKind regards,\nIvan"
+
+
 def _client():
     client = Mock()
     client.messages.create.side_effect = [
         _message(ANALYSIS_JSON),
-        _message("# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."),
-        _message("Dear Acme GmbH team,\n\nKind regards,\nIvan"),
+        _message(CV_MARKDOWN),
+        _message(CV_MARKDOWN),
+        _message(LETTER_MARKDOWN),
+        _message(LETTER_MARKDOWN),
     ]
     return client
 
