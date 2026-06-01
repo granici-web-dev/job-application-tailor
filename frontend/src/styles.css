@@ -486,23 +486,6 @@ button {
   white-space: nowrap;
 }
 
-.group-label td {
-  padding: var(--s-5) var(--s-3) var(--s-2);
-  color: var(--muted-soft);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  border-bottom: none;
-}
-
-tr.is-hidden td {
-  color: var(--muted-soft);
-}
-
-tr.is-hidden .company {
-  color: var(--muted);
-}
-
 /* Status pill (toggle) */
 .pill {
   display: inline-flex;

@@ -10,7 +10,7 @@ import {
 } from '../api'
 import { DownloadIcon, ExternalLinkIcon, EyeIcon, EyeOffIcon } from '../icons'
 
-type Filter = 'active' | 'all'
+type Tab = 'active' | 'hidden'
 
 const EMPLOYMENT_LABELS: Record<string, string> = {
   remote: 'Удалённо',
@@ -19,21 +19,19 @@ const EMPLOYMENT_LABELS: Record<string, string> = {
   unknown: 'н/д',
 }
 
-const COLUMN_COUNT = 9
-
 export function ApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([])
-  const [filter, setFilter] = useState<Filter>('active')
+  const [tab, setTab] = useState<Tab>('active')
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState('')
   const [pendingId, setPendingId] = useState<number | null>(null)
   const [toast, setToast] = useState('')
 
-  const load = useCallback(async (current: Filter) => {
+  const load = useCallback(async () => {
     setLoading(true)
     setFetchError('')
     try {
-      const data = await fetchApplications(current === 'all')
+      const data = await fetchApplications(true)
       setApplications(data)
     } catch (caught) {
       setFetchError(caught instanceof Error ? caught.message : 'Не удалось загрузить заявки.')
@@ -43,8 +41,8 @@ export function ApplicationsPage() {
   }, [])
 
   useEffect(() => {
-    load(filter)
-  }, [filter, load])
+    load()
+  }, [load])
 
   useEffect(() => {
     if (!toast) {
@@ -74,15 +72,13 @@ export function ApplicationsPage() {
     const nextHidden = !application.hidden
     setPendingId(application.id)
     setApplications((prev) =>
-      filter === 'active' && nextHidden
-        ? prev.filter((row) => row.id !== application.id)
-        : prev.map((row) => (row.id === application.id ? { ...row, hidden: nextHidden } : row)),
+      prev.map((row) => (row.id === application.id ? { ...row, hidden: nextHidden } : row)),
     )
     try {
       await setApplicationVisibility(application.id, nextHidden)
-      await load(filter)
+      await load()
     } catch (caught) {
-      await load(filter)
+      await load()
       setToast(caught instanceof Error ? caught.message : 'Не удалось сохранить. Изменение отменено.')
     } finally {
       setPendingId(null)
@@ -97,8 +93,7 @@ export function ApplicationsPage() {
     }
   }
 
-  const active = applications.filter((row) => !row.hidden)
-  const hidden = applications.filter((row) => row.hidden)
+  const visible = applications.filter((row) => (tab === 'hidden' ? row.hidden : !row.hidden))
 
   return (
     <main className="page">
@@ -111,19 +106,19 @@ export function ApplicationsPage() {
         <div className="segmented" role="group" aria-label="Фильтр заявок">
           <button
             type="button"
-            className={filter === 'active' ? 'is-active' : ''}
-            aria-pressed={filter === 'active'}
-            onClick={() => setFilter('active')}
+            className={tab === 'active' ? 'is-active' : ''}
+            aria-pressed={tab === 'active'}
+            onClick={() => setTab('active')}
           >
             Активные
           </button>
           <button
             type="button"
-            className={filter === 'all' ? 'is-active' : ''}
-            aria-pressed={filter === 'all'}
-            onClick={() => setFilter('all')}
+            className={tab === 'hidden' ? 'is-active' : ''}
+            aria-pressed={tab === 'hidden'}
+            onClick={() => setTab('hidden')}
           >
-            Все
+            Скрытые
           </button>
         </div>
       </div>
@@ -133,14 +128,20 @@ export function ApplicationsPage() {
       ) : fetchError ? (
         <section className="notice notice-error" role="alert">
           {fetchError}{' '}
-          <button type="button" className="btn btn-sm btn-ghost" onClick={() => load(filter)}>
+          <button type="button" className="btn btn-sm btn-ghost" onClick={() => load()}>
             Повторить
           </button>
         </section>
-      ) : applications.length === 0 ? (
+      ) : visible.length === 0 ? (
         <div className="state-block">
-          <strong>Заявок пока нет</strong>
-          Сгенерируйте первую на странице «Сгенерировать».
+          {tab === 'hidden' ? (
+            <strong>Нет скрытых заявок</strong>
+          ) : (
+            <>
+              <strong>Заявок пока нет</strong>
+              Сгенерируйте первую на странице «Сгенерировать».
+            </>
+          )}
         </div>
       ) : (
         <div className="table-wrap">
@@ -159,7 +160,7 @@ export function ApplicationsPage() {
               </tr>
             </thead>
             <tbody>
-              {active.map((application) => (
+              {visible.map((application) => (
                 <ApplicationRow
                   key={application.id}
                   application={application}
@@ -170,23 +171,6 @@ export function ApplicationsPage() {
                 />
               ))}
             </tbody>
-            {hidden.length > 0 && (
-              <tbody>
-                <tr className="group-label">
-                  <td colSpan={COLUMN_COUNT}>Скрытые</td>
-                </tr>
-                {hidden.map((application) => (
-                  <ApplicationRow
-                    key={application.id}
-                    application={application}
-                    pending={pendingId === application.id}
-                    onToggleStatus={() => toggleStatus(application)}
-                    onToggleVisibility={() => toggleVisibility(application)}
-                    onDownload={onDownload}
-                  />
-                ))}
-              </tbody>
-            )}
           </table>
         </div>
       )}
@@ -211,7 +195,7 @@ interface RowProps {
 function ApplicationRow({ application, pending, onToggleStatus, onToggleVisibility, onDownload }: RowProps) {
   const sent = application.status === STATUS_SENT
   return (
-    <tr className={application.hidden ? 'is-hidden' : ''}>
+    <tr>
       <td className="company">{application.company_name}</td>
       <td>{application.employee_count || 'н/д'}</td>
       <td>
