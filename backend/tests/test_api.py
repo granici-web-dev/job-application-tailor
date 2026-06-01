@@ -145,6 +145,59 @@ def test_patch_status_locked_tracker_returns_409(client, monkeypatch):
     assert response.status_code == 409
 
 
+def test_hide_removes_application_from_active_list(client):
+    row = _seed_application(client.output_dir, "Acme")
+
+    assert client.patch(f"/applications/{row}/visibility", json={"hidden": True}).status_code == 200
+
+    active = client.get("/applications").json()
+    assert all(application["id"] != row for application in active)
+
+
+def test_include_hidden_returns_hidden_applications(client):
+    row = _seed_application(client.output_dir, "Acme")
+    client.patch(f"/applications/{row}/visibility", json={"hidden": True})
+
+    rows = client.get("/applications", params={"include_hidden": "true"}).json()
+    target = next(application for application in rows if application["id"] == row)
+    assert target["hidden"] is True
+
+
+def test_application_response_includes_hidden_flag(client):
+    _seed_application(client.output_dir, "Acme")
+
+    rows = client.get("/applications").json()
+    assert rows[0]["hidden"] is False
+
+
+def test_patch_visibility_idempotent_hide(client):
+    row = _seed_application(client.output_dir, "Acme")
+
+    first = client.patch(f"/applications/{row}/visibility", json={"hidden": True})
+    second = client.patch(f"/applications/{row}/visibility", json={"hidden": True})
+
+    assert first.status_code == 200 and second.status_code == 200
+    assert second.json()["hidden"] is True
+    everything = client.get("/applications", params={"include_hidden": "true"}).json()
+    assert sum(1 for application in everything if application["id"] == row) == 1
+
+
+def test_show_again_returns_to_active_list(client):
+    row = _seed_application(client.output_dir, "Acme")
+    client.patch(f"/applications/{row}/visibility", json={"hidden": True})
+
+    client.patch(f"/applications/{row}/visibility", json={"hidden": False})
+
+    active = client.get("/applications").json()
+    assert any(application["id"] == row for application in active)
+
+
+def test_patch_visibility_unknown_id_returns_404(client):
+    _seed_application(client.output_dir, "Acme")
+
+    assert client.patch("/applications/99/visibility", json={"hidden": True}).status_code == 404
+
+
 def test_files_missing_returns_404(client):
     assert client.get("/files/Nope/missing.pdf").status_code == 404
 

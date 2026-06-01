@@ -14,7 +14,13 @@ from pydantic import BaseModel, field_validator
 from backend.config import Settings, frontend_origins, load_settings, make_anthropic_client
 from backend.errors import ApplicationNotFoundError, TailorError, TrackerError
 from backend.pipeline import TRACKER_FILENAME, run_pipeline
-from backend.tracker import ALLOWED_STATUSES, Application, read_applications, set_application_status
+from backend.tracker import (
+    ALLOWED_STATUSES,
+    Application,
+    read_applications,
+    set_application_hidden,
+    set_application_status,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 
@@ -64,6 +70,7 @@ class ApplicationResponse(BaseModel):
     job_title: str
     status: str
     created_on: str
+    hidden: bool
 
     model_config = {"from_attributes": True}
 
@@ -77,6 +84,10 @@ class StatusUpdateRequest(BaseModel):
         if value not in ALLOWED_STATUSES:
             raise ValueError(f"status must be one of {sorted(ALLOWED_STATUSES)}")
         return value
+
+
+class VisibilityUpdateRequest(BaseModel):
+    hidden: bool
 
 
 app = FastAPI(title="Job Application Tailor")
@@ -137,8 +148,11 @@ def generate(
 
 
 @app.get("/applications", response_model=list[ApplicationResponse])
-def list_applications(paths: Paths = Depends(get_paths)) -> list[Application]:
-    return read_applications(paths.output_dir / TRACKER_FILENAME)
+def list_applications(
+    include_hidden: bool = False,
+    paths: Paths = Depends(get_paths),
+) -> list[Application]:
+    return read_applications(paths.output_dir / TRACKER_FILENAME, include_hidden=include_hidden)
 
 
 @app.patch("/applications/{application_id}/status", response_model=ApplicationResponse)
@@ -149,7 +163,22 @@ def update_status(
 ) -> Application:
     tracker_path = paths.output_dir / TRACKER_FILENAME
     set_application_status(tracker_path, application_id, body.status)
-    for application in read_applications(tracker_path):
+    return _find_application(tracker_path, application_id)
+
+
+@app.patch("/applications/{application_id}/visibility", response_model=ApplicationResponse)
+def update_visibility(
+    application_id: int,
+    body: VisibilityUpdateRequest,
+    paths: Paths = Depends(get_paths),
+) -> Application:
+    tracker_path = paths.output_dir / TRACKER_FILENAME
+    set_application_hidden(tracker_path, application_id, body.hidden)
+    return _find_application(tracker_path, application_id)
+
+
+def _find_application(tracker_path: Path, application_id: int) -> Application:
+    for application in read_applications(tracker_path, include_hidden=True):
         if application.id == application_id:
             return application
     raise ApplicationNotFoundError(f"No application with id {application_id} in the tracker.")

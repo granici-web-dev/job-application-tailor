@@ -6,28 +6,35 @@ from pathlib import Path
 
 from openpyxl import Workbook, load_workbook
 from openpyxl.styles import Font
+from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.worksheet.worksheet import Worksheet
 
 from backend.errors import ApplicationNotFoundError, TrackerError
 from backend.models import JobAnalysis
 
+STATUS_HEADER = "Статус"
+HIDDEN_HEADER = "Скрыто"
 HEADERS = [
     "Название фирмы",
     "Сколько работников",
     "Линк на вакансию",
     "Тип занятости",
     "Название должности",
-    "Статус",
+    STATUS_HEADER,
     "Дата создания",
+    HIDDEN_HEADER,
 ]
-STATUS_COLUMN = "F"
-STATUS_COLUMN_INDEX = 6
+STATUS_COLUMN_INDEX = HEADERS.index(STATUS_HEADER) + 1
+STATUS_COLUMN = get_column_letter(STATUS_COLUMN_INDEX)
+HIDDEN_COLUMN_INDEX = HEADERS.index(HIDDEN_HEADER) + 1
+HIDDEN_COLUMN = get_column_letter(HIDDEN_COLUMN_INDEX)
 STATUS_SENT = "ОТПРАВЛЕНО"
 STATUS_NOT_SENT = "НЕ ОТПРАВЛЕНО"
 STATUS_RANGE = f"{STATUS_COLUMN}2:{STATUS_COLUMN}1000"
 ALLOWED_STATUSES = frozenset({STATUS_SENT, STATUS_NOT_SENT})
 EMPLOYEE_COUNT_UNKNOWN = "н/д"
-COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14}
+COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14, "H": 10}
 DATA_START_ROW = 2
 
 
@@ -41,6 +48,7 @@ class Application:
     job_title: str
     status: str
     created_on: str
+    hidden: bool
 
 
 def append_application(
@@ -52,6 +60,7 @@ def append_application(
 ) -> int:
     workbook = _open_or_create(tracker_path)
     sheet = workbook.active
+    _ensure_hidden_column(sheet)
     sheet.append(
         [
             analysis.company_name,
@@ -61,27 +70,26 @@ def append_application(
             analysis.job_title,
             STATUS_NOT_SENT,
             created_on.isoformat(),
+            False,
         ]
     )
     appended_row = sheet.max_row
-    try:
-        workbook.save(tracker_path)
-    except PermissionError:
-        raise TrackerError(
-            f"Could not write the tracker at {tracker_path}. It is probably open in Excel. "
-            "Close it and run again."
-        )
+    _save_workbook(workbook, tracker_path)
     return appended_row
 
 
-def read_applications(tracker_path: Path) -> list[Application]:
+def read_applications(tracker_path: Path, *, include_hidden: bool = False) -> list[Application]:
     if not tracker_path.exists():
         return []
     sheet = _load_workbook(tracker_path).active
+    has_hidden_column = sheet.cell(row=1, column=HIDDEN_COLUMN_INDEX).value == HIDDEN_HEADER
     applications = []
     for row in range(DATA_START_ROW, sheet.max_row + 1):
         values = [sheet.cell(row=row, column=column).value for column in range(1, len(HEADERS) + 1)]
         if values[0] is None:
+            continue
+        hidden = _parse_hidden(values[HIDDEN_COLUMN_INDEX - 1]) if has_hidden_column else False
+        if hidden and not include_hidden:
             continue
         applications.append(
             Application(
@@ -93,19 +101,60 @@ def read_applications(tracker_path: Path) -> list[Application]:
                 job_title=_cell_text(values[4]),
                 status=_cell_text(values[5]),
                 created_on=_cell_text(values[6]),
+                hidden=hidden,
             )
         )
     return applications
 
 
 def set_application_status(tracker_path: Path, application_id: int, status: str) -> None:
+    workbook, sheet = _open_existing_row(tracker_path, application_id)
+    _ensure_hidden_column(sheet)
+    sheet.cell(row=application_id, column=STATUS_COLUMN_INDEX).value = status
+    _save_workbook(workbook, tracker_path)
+
+
+def set_application_hidden(tracker_path: Path, application_id: int, hidden: bool) -> None:
+    workbook, sheet = _open_existing_row(tracker_path, application_id)
+    _ensure_hidden_column(sheet)
+    sheet.cell(row=application_id, column=HIDDEN_COLUMN_INDEX).value = hidden
+    _save_workbook(workbook, tracker_path)
+
+
+def _open_existing_row(tracker_path: Path, application_id: int) -> tuple[Workbook, Worksheet]:
     if not tracker_path.exists():
         raise ApplicationNotFoundError(f"No application with id {application_id} exists yet.")
     workbook = _load_workbook(tracker_path)
     sheet = workbook.active
     if application_id < DATA_START_ROW or application_id > sheet.max_row:
         raise ApplicationNotFoundError(f"No application with id {application_id} in the tracker.")
-    sheet.cell(row=application_id, column=STATUS_COLUMN_INDEX).value = status
+    return workbook, sheet
+
+
+def _ensure_hidden_column(sheet) -> None:
+    header_cell = sheet.cell(row=1, column=HIDDEN_COLUMN_INDEX)
+    if header_cell.value == HIDDEN_HEADER:
+        return
+    header_cell.value = HIDDEN_HEADER
+    header_cell.font = Font(bold=True)
+    sheet.column_dimensions[HIDDEN_COLUMN].width = COLUMN_WIDTHS[HIDDEN_COLUMN]
+    for row in range(DATA_START_ROW, sheet.max_row + 1):
+        sheet.cell(row=row, column=HIDDEN_COLUMN_INDEX).value = False
+
+
+def _parse_hidden(value: object) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "да", "yes"}
+    return False
+
+
+def _cell_text(value: object) -> str:
+    return "" if value is None else str(value)
+
+
+def _save_workbook(workbook: Workbook, tracker_path: Path) -> None:
     try:
         workbook.save(tracker_path)
     except PermissionError:
@@ -113,10 +162,6 @@ def set_application_status(tracker_path: Path, application_id: int, status: str)
             f"Could not write the tracker at {tracker_path}. It is probably open in Excel. "
             "Close it and run again."
         )
-
-
-def _cell_text(value: object) -> str:
-    return "" if value is None else str(value)
 
 
 def _open_or_create(tracker_path: Path) -> Workbook:
