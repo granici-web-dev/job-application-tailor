@@ -19,6 +19,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Dev-зависимости (pytest и т.д.) — образ используется и для запуска тестов:
+#   docker compose run --rm backend python -m pytest backend/tests -q
+COPY requirements-dev.txt .
+RUN pip install --no-cache-dir -r requirements-dev.txt
+
 # Код копируется для standalone-сборки; в dev он же монтируется томом (см. docker-compose.yml)
 COPY backend ./backend
 COPY prompts ./prompts
