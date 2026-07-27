@@ -21,6 +21,14 @@ p { margin: 0 0 6pt; }
 ul { margin: 4pt 0 4pt 18pt; padding: 0; }
 li { margin: 0 0 2pt; }
 a { color: #000000; text-decoration: none; }
+
+/* Letterhead spacing follows DIN 5008: roughly one blank line between the sender block and
+   the address field, and two blank lines before and after the Betreffzeile. One blank line
+   at this font size is ~15pt (10.5pt * 1.4 line-height). */
+.letter-sender { margin: 0 0 22pt; }
+.letter-recipient { margin: 0 0 15pt; }
+.letter-date { text-align: right; margin: 0 0 29pt; }
+.letter-subject { font-weight: 700; margin: 0 0 29pt; }
 """
 
 CV_CSS = """
@@ -43,7 +51,9 @@ h1 {
   font-weight: 600;
   letter-spacing: -0.02em;
   color: #111111;
-  margin: 0 0 2pt;
+  /* 6pt, not less: below ~4pt PDF text extraction stops emitting a line break here
+     and ATS parsers read the name and the headline as one glued token. */
+  margin: 0 0 6pt;
 }
 h1 + p { color: #6b7280; font-size: 9pt; margin: 0 0 10pt; }
 h2 {
@@ -78,8 +88,12 @@ def render_markdown_to_pdf(
     css: str = LETTER_CSS,
     photo: bytes | None = None,
     include_photo: bool = True,
+    line_breaks: bool = False,
 ) -> bytes:
-    body_html = markdown_lib.markdown(markdown_text, extensions=["extra"])
+    # The CV header and the skills block put each entry on its own line; without nl2br
+    # Markdown folds them into one run-on paragraph and the separators disappear.
+    extensions = ["extra", "nl2br"] if line_breaks else ["extra"]
+    body_html = markdown_lib.markdown(markdown_text, extensions=extensions)
     if photo is not None and include_photo:
         body_html = f'<img class="cv-photo" src="{_image_data_uri(photo)}" alt="">' + body_html
     document_html = HTML_DOCUMENT.format(css=css, body=body_html)

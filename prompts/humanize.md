@@ -24,7 +24,7 @@ Make it concrete:
 - Prefer specific nouns and verbs over abstract ones. Replace a smooth generality with the actual thing the candidate did.
 
 ## When humanizing a cover letter
-Apply all of the above fully. Rework sentence structure freely to sound natural, as long as every fact stays intact and the tone and signature match the original.
+Apply all of the above fully. Rework sentence structure freely to sound natural, as long as every fact stays intact and the tone and signature match the original. A statement about availability or working model (for example ab sofort, in Vollzeit) counts as a fact: rephrase it if you like, never cut it.
 
 ## When humanizing a CV
 Rephrase wording at the sentence and bullet level only. Do not change the document structure: keep the section headings exactly as written (same text, same language, for example Profil, Berufserfahrung, Kenntnisse, Ausbildung, Sprachen), keep every bullet point, and keep all bold. Do not reorder sections. Touch the prose inside bullets, never the skeleton around it.

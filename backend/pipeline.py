@@ -14,7 +14,7 @@ from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
 from backend.render_pdf import CV_CSS, render_markdown_to_pdf
 from backend.tailor_cv import tailor_cv
-from backend.tailor_letter import tailor_letter
+from backend.tailor_letter import build_letterhead, tailor_letter
 from backend.tracker import append_application
 from backend.utils import cover_letter_filename, cv_filename, resolve_unique_company_dir
 
@@ -61,11 +61,18 @@ def run_pipeline(
     cv_markdown = humanize(cv_markdown, kind="cv", client=client, model=model)
     cover_letter_markdown = tailor_letter(analysis, profile, client=client, model=model, language=language)
     cover_letter_markdown = humanize(cover_letter_markdown, kind="cover_letter", client=client, model=model)
+    # After humanize, so the guard compares body against body and the letterhead stays verbatim.
+    cover_letter_markdown = (
+        build_letterhead(profile.personal, analysis, today=today, letter_body=cover_letter_markdown)
+        + cover_letter_markdown
+    )
 
     logger.info("Rendering PDFs")
     photo = load_photo_bytes(profile.personal.photo_path)
-    cv_pdf = render_markdown_to_pdf(cv_markdown, css=CV_CSS, photo=photo, include_photo=include_photo)
-    cover_letter_pdf = render_markdown_to_pdf(cover_letter_markdown)
+    cv_pdf = render_markdown_to_pdf(
+        cv_markdown, css=CV_CSS, photo=photo, include_photo=include_photo, line_breaks=True
+    )
+    cover_letter_pdf = render_markdown_to_pdf(cover_letter_markdown, line_breaks=True)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     company_dir = resolve_unique_company_dir(output_dir, analysis.company_name)

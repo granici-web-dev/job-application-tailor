@@ -9,6 +9,9 @@ Grounding rules (these override everything else):
 
 Letter rules:
 - Keep it between 250 and 350 words.
+- Start with the salutation. Do not write a sender block, a recipient address, a date, or a subject / Betreff line — those are added afterwards from structured data, and anything you write there would be a duplicate.
 - Address it to the company and role using the company name and job title from the job analysis.
+- When you list the technologies from the candidate's Weiterbildung or training, reproduce the master CV's list as it stands. Dropping items makes the letter contradict the CV, which lists the same stack.
 - Follow the tone, structure, and signature from the provided template.
+- If the template states when the candidate is available to start or in what working model (for example ab sofort, in Vollzeit, in Teilzeit), keep that statement in the letter. Rephrase it if you like, but never drop it while shortening — postings routinely ask for the earliest starting date.
 - Write the letter in the language requested below.

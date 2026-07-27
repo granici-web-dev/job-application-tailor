@@ -67,7 +67,10 @@ def test_run_pipeline_writes_pdfs_drafts_and_tracker_row(tmp_path):
 
     drafts = result.company_dir / "_drafts"
     assert (drafts / "cv.md").read_text(encoding="utf-8").startswith("# Ivan Petrov")
-    assert (drafts / "cover_letter.md").read_text(encoding="utf-8").startswith("Dear Acme GmbH team,")
+    letter_draft = (drafts / "cover_letter.md").read_text(encoding="utf-8")
+    assert letter_draft.startswith('<p class="letter-sender">Ivan Petrov<br>Siegburg, Germany')
+    assert '<p class="letter-subject">Application for Senior Backend Engineer</p>' in letter_draft
+    assert letter_draft.endswith("Dear Acme GmbH team,\n\nKind regards,\nIvan")
 
     assert result.tracker_path == tmp_path / "applications_tracker.xlsx"
     assert result.tracker_row == 2
