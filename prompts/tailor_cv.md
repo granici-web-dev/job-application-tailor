@@ -18,6 +18,7 @@ ATS formatting rules:
 - Experience bullets start with an action verb and include measurable results where the master CV provides them.
 
 Content rules:
+- Keep the named technologies the master CV lists for a degree or a training exactly as they are. Do not thin the list down: a named technology (for example a specific state-management library) is the only evidence behind the generic capability a posting asks for, and the cover letter reproduces the same list.
 - Include the candidate's contact details (name, email, and any phone, location, LinkedIn, GitHub, and languages provided) at the top and in the relevant sections. Do not drop provided contact details.
 - Reflect the candidate's languages in a Languages section.
 - Write the CV in the language requested below.
