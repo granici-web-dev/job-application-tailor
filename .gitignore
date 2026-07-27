@@ -13,6 +13,10 @@
 # Claude Code
 .claude/
 
+# IDEs
+.idea/
+.vscode/
+
 # Python
 __pycache__/
 *.pyc
