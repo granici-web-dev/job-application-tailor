@@ -91,6 +91,26 @@ class VisibilityUpdateRequest(BaseModel):
 
 
 app = FastAPI(title="Job Application Tailor")
+
+logger = logging.getLogger(__name__)
+
+
+# Registered before CORSMiddleware so that CORS ends up wrapping it. An unhandled
+# exception would otherwise reach Starlette's outermost error middleware, which
+# answers with a bare 500 carrying no CORS headers — the browser then hides the
+# response and reports only "Failed to fetch" instead of the real error.
+@app.middleware("http")
+async def _answer_unexpected_errors_as_json(request: Request, call_next):
+    try:
+        return await call_next(request)
+    except Exception:
+        logger.exception("Unhandled error while serving %s %s", request.method, request.url.path)
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Something went wrong on the server. Check the backend logs."},
+        )
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=frontend_origins(),

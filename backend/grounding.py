@@ -1,8 +1,9 @@
-"""Deterministic check that a tailored CV lists no skill the master CV does not state.
+"""Deterministic checks that a tailored CV carries the right skills — no more, no fewer.
 
 The humanize guard only compares a document against its own previous version, so it cannot
 see a skill that the tailoring step imported straight from the job posting. This module
-closes that gap for the skills section, where such imports actually land.
+closes that gap for the skills section, where such imports actually land, and the opposite
+gap with it: a skill the posting asks for and the candidate really has, dropped on the way.
 """
 
 from __future__ import annotations
@@ -18,8 +19,10 @@ LIST_MARKER = re.compile(r"^\s*[-*+]\s+")
 NON_WORD = re.compile(r"[^0-9a-zà-öø-ÿ]+", re.IGNORECASE)
 
 # Parentheses hold examples ("AI Tools (Claude Code, Codex)"), so they open a new item
-# rather than staying glued to the one before them.
-ITEM_SEPARATORS = re.compile(r"[,/;·()]")
+# rather than staying glued to the one before them. The pipe and the bullet are here because
+# the model reaches for them to lay a group out on one line; missing one glues two real
+# skills into a phrase the master CV cannot possibly contain.
+ITEM_SEPARATORS = re.compile(r"[,/;·•|]|[()]")
 MAX_ITEM_WORDS = 6
 
 
@@ -32,6 +35,30 @@ def unsupported_skills(cv_markdown: str, master_markdown: str) -> list[str]:
         if not _is_supported(item, spaced, squashed) and item not in unsupported:
             unsupported.append(item)
     return unsupported
+
+
+def missing_required_skills(
+    cv_markdown: str, master_markdown: str, required: list[str]
+) -> list[str]:
+    """Skills the posting asks for that the master CV backs but the tailored CV never mentions.
+
+    Checked against the whole document, not just the skills section: a skill earns its keep
+    just as well from an experience bullet, and demanding the section carry it would push the
+    model to pad the list.
+    """
+    master_spaced = _normalize(master_markdown)
+    master_squashed = master_spaced.replace(" ", "")
+    cv_spaced = _normalize(cv_markdown)
+    cv_squashed = cv_spaced.replace(" ", "")
+    missing: list[str] = []
+    for skill in required:
+        # A skill the master CV does not back is not missing, it is off limits.
+        if not _is_supported(skill, master_spaced, master_squashed):
+            continue
+        if _is_supported(skill, cv_spaced, cv_squashed) or skill in missing:
+            continue
+        missing.append(skill)
+    return missing
 
 
 def _skill_items(cv_markdown: str) -> list[str]:

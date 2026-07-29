@@ -1,4 +1,4 @@
-from backend.grounding import unsupported_skills
+from backend.grounding import missing_required_skills, unsupported_skills
 
 MASTER = """# Serghei Granici
 
@@ -79,3 +79,48 @@ def test_reports_each_unsupported_skill_once():
 def test_recognizes_an_english_skills_heading():
     cv = "# Name\n\n## Skills\n\n- Kubernetes\n\n## Languages\n\n- German\n"
     assert unsupported_skills(cv, MASTER) == ["Kubernetes"]
+
+
+def test_flags_a_required_skill_the_cv_dropped():
+    cv = _cv("**Frontend:** React, HTML")
+
+    assert missing_required_skills(cv, MASTER, ["React", "Docker", "TypeScript"]) == [
+        "Docker",
+        "TypeScript",
+    ]
+
+
+def test_ignores_a_required_skill_the_master_cv_does_not_back():
+    cv = _cv("**Frontend:** React")
+
+    assert missing_required_skills(cv, MASTER, ["Kubernetes", "Rust"]) == []
+
+
+def test_counts_a_skill_as_present_anywhere_in_the_cv():
+    cv = _cv("**Frontend:** React")
+
+    assert missing_required_skills(cv, MASTER, ["Profil"]) == []
+
+
+def test_matches_a_required_skill_through_the_master_cv_wording_variant():
+    cv = _cv("**Backend:** REST-APIs, WebSockets")
+
+    assert missing_required_skills(cv, MASTER, ["REST API", "WebSocket"]) == []
+
+
+def test_reports_each_missing_skill_once():
+    cv = _cv("**Frontend:** React")
+
+    assert missing_required_skills(cv, MASTER, ["Docker", "Docker"]) == ["Docker"]
+
+
+def test_splits_a_group_laid_out_with_pipes():
+    cv = _cv("**Design:** Figma / Figma MCP | UI-Komponenten | Design-Systeme")
+
+    assert unsupported_skills(cv, MASTER) == []
+
+
+def test_splits_a_group_laid_out_with_bullets():
+    cv = _cv("**Frontend:** React • TypeScript • HTML")
+
+    assert unsupported_skills(cv, MASTER) == []

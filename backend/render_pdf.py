@@ -62,9 +62,14 @@ h2 {
   color: #111111;
   margin: 14pt 0 5pt;
 }
+/* The section rule comes from the Markdown "---" alone. Without clear it runs across the
+   floated photo; a border on the first h2 on top of it drew a second line under the first.
+   Clearance lands the rule flush against the photo and ignores the photo's own bottom
+   margin, so the gap has to come from the rule that sits next to it. */
+hr { clear: both; }
+hr:first-of-type { margin-top: 14pt; }
 h2:first-of-type {
   clear: both;
-  border-top: 1px solid #3b82f6;
   padding-top: 11pt;
   margin-top: 4pt;
 }

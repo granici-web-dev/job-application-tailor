@@ -26,6 +26,7 @@ def _analysis(**overrides):
         employment_type="onsite",
         employee_count=None,
         location="Köln",
+        contact_person=None,
         hard_skills=[],
         soft_skills=[],
         keywords=[],
@@ -54,6 +55,32 @@ def test_english_letter_gets_an_english_subject_and_date():
     assert '<p class="letter-subject">Application for Frontend Developer (m/w/d)</p>' in head
     assert "27 July 2026" in head
     assert "Bewerbung" not in head
+
+
+def test_recipient_carries_a_named_contact_person():
+    head = build_letterhead(
+        PERSONAL,
+        _analysis(contact_person="Frau Sennhenn"),
+        today=date(2026, 7, 27),
+        letter_body=GERMAN_BODY,
+    )
+
+    assert (
+        '<p class="letter-recipient">Musterfirma Testwerk GmbH<br>z. Hd. Frau Sennhenn<br>Köln</p>'
+        in head
+    )
+
+
+def test_english_recipient_uses_attn():
+    head = build_letterhead(
+        PERSONAL,
+        _analysis(contact_person="Ms Sennhenn"),
+        today=date(2026, 7, 27),
+        letter_body=ENGLISH_BODY,
+    )
+
+    assert "Attn: Ms Sennhenn" in head
+    assert "z. Hd." not in head
 
 
 def test_recipient_omits_an_unknown_location():

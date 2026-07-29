@@ -20,10 +20,10 @@ services:
       - CHOKIDAR_USEPOLLING=true # надёжный HMR внутри Docker
       - VITE_API_URL=http://localhost:8010 # бэкенд виден браузеру на порту хоста
     ports:
-      - "5173:5173"
+      - "5005:5005"
     volumes:
       - ./frontend:/app
       - /app/node_modules # не затирать модули контейнера хостовой папкой
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0 --port 5005"
     depends_on:
       - backend

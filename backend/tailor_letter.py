@@ -8,6 +8,7 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
+from backend.emphasis import emphasis_section
 from backend.llm import complete
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
@@ -52,6 +53,8 @@ def build_letterhead(
         sender.append(contact)
 
     recipient = [analysis.company_name]
+    if analysis.contact_person:
+        recipient.append(f"{'z. Hd. ' if german else 'Attn: '}{analysis.contact_person}")
     if analysis.location:
         recipient.append(analysis.location)
 
@@ -104,6 +107,7 @@ def build_letter_prompt(
             "## Cover letter template (tone, structure, signature)\n" + profile.cover_letter_template,
             "## Candidate master CV (real experience to draw on)\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
+            *emphasis_section(analysis.discipline, kind="cover_letter"),
         ]
     )
     return system_prompt, user_message

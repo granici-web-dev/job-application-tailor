@@ -17,6 +17,10 @@ class JobAnalysisError(TailorError):
     pass
 
 
+class LLMError(TailorError):
+    pass
+
+
 class ProfileError(TailorError):
     pass
 

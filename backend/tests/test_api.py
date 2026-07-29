@@ -4,6 +4,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import anthropic
+import httpx
 import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
@@ -11,13 +13,14 @@ from openpyxl import load_workbook
 
 from backend import api
 from backend.api import Paths, app, get_anthropic_client, get_paths, get_settings, serve_file
-from backend.config import Settings
+from backend.config import Settings, frontend_origins
 from backend.errors import TrackerError
 from backend.models import JobAnalysis
 from backend.pipeline import TRACKER_FILENAME
 from backend.tracker import STATUS_NOT_SENT, STATUS_SENT, append_application
 
 PROFILE_DIR = Path(__file__).parent / "fixtures" / "profile"
+ALLOWED_ORIGIN = frontend_origins()[0]
 
 ANALYSIS_JSON = json.dumps(
     {
@@ -266,3 +269,38 @@ def test_serve_file_rejects_path_traversal(tmp_path):
         serve_file(company="..", filename="secret.txt", paths=Paths(output_dir=output_dir, profile_dir=PROFILE_DIR))
 
     assert raised.value.status_code == 404
+
+
+def _generate_with_failing_client(client, error):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    failing = Mock()
+    failing.messages.create.side_effect = error
+    app.dependency_overrides[get_anthropic_client] = lambda: failing
+    return client.post(
+        "/generate",
+        json={"url": "https://example.com/jobs/1", "text": "Backend role at Acme GmbH."},
+        headers={"Origin": ALLOWED_ORIGIN},
+    )
+
+
+def test_anthropic_failure_returns_readable_detail_the_browser_can_read(client):
+    credit_error = anthropic.BadRequestError(
+        "boom",
+        response=httpx.Response(400, request=httpx.Request("POST", "https://api.anthropic.com/v1/messages")),
+        body={"type": "error", "error": {"message": "Your credit balance is too low to access the Anthropic API."}},
+    )
+
+    response = _generate_with_failing_client(client, credit_error)
+
+    assert response.status_code == 400
+    assert "no credit left" in response.json()["detail"]
+    # Without this header the browser discards the body and reports only "Failed to fetch".
+    assert response.headers["access-control-allow-origin"] == ALLOWED_ORIGIN
+
+
+def test_unexpected_failure_returns_json_the_browser_can_read(client):
+    response = _generate_with_failing_client(client, RuntimeError("something nobody predicted"))
+
+    assert response.status_code == 500
+    assert response.json()["detail"]
+    assert response.headers["access-control-allow-origin"] == ALLOWED_ORIGIN

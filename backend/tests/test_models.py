@@ -16,6 +16,24 @@ def test_job_analysis_defaults_unknown_employment_type():
     assert analysis.employment_type == "unknown"
 
 
+def test_job_analysis_keeps_a_known_discipline():
+    analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="design"))
+
+    assert analysis.discipline == "design"
+
+
+def test_job_analysis_defaults_unknown_discipline():
+    analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="ui-ish"))
+
+    assert analysis.discipline == "unknown"
+
+
+def test_job_analysis_without_discipline_stays_neutral():
+    analysis = JobAnalysis.from_response_dict(_minimal_response())
+
+    assert analysis.discipline == "unknown"
+
+
 def test_job_analysis_preserves_null_employee_count():
     analysis = JobAnalysis.from_response_dict(_minimal_response(employee_count=None))
 

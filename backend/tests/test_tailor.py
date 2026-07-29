@@ -41,12 +41,47 @@ def _client_returning(text):
 
 
 def test_tailor_cv_returns_markdown_from_model():
-    client = _client_returning("# Ivan Petrov\n\n## Summary\nBackend engineer.")
+    # Carries Python: the one posting skill the master CV backs, so no correction is due.
+    client = _client_returning("# Ivan Petrov\n\n## Skills\nPython, FastAPI\n")
 
     result = tailor_cv(ANALYSIS, PROFILE, client=client, model="claude-sonnet-4-6")
 
     assert result.startswith("# Ivan Petrov")
     assert client.messages.create.call_count == 1
+
+
+def test_tailor_cv_asks_again_when_a_required_skill_is_missing():
+    client = _client_returning("# Ivan Petrov\n\n## Skills\nFastAPI, Docker\n")
+
+    tailor_cv(ANALYSIS, PROFILE, client=client, model="claude-sonnet-4-6")
+
+    correction = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert client.messages.create.call_count == 2
+    assert "left out skills this posting asks for" in correction
+    assert "Python" in correction
+
+
+def test_tailor_cv_does_not_chase_a_posting_skill_the_candidate_lacks():
+    client = _client_returning("# Ivan Petrov\n\n## Skills\nPython, FastAPI\n")
+
+    tailor_cv(ANALYSIS, PROFILE, client=client, model="claude-sonnet-4-6")
+
+    # Kubernetes and Rust are on the posting but nowhere in the master CV.
+    assert client.messages.create.call_count == 1
+
+
+def test_tailor_cv_keeps_the_first_cv_when_the_retry_trades_an_omission_for_a_fabrication():
+    first = "# Ivan Petrov\n\n## Skills\nFastAPI, Docker\n"
+    second = "# Ivan Petrov\n\n## Skills\nPython, FastAPI, Docker, Kubernetes\n"
+    client = Mock()
+    client.messages.create.side_effect = [
+        SimpleNamespace(content=[SimpleNamespace(type="text", text=first)]),
+        SimpleNamespace(content=[SimpleNamespace(type="text", text=second)]),
+    ]
+
+    result = tailor_cv(ANALYSIS, PROFILE, client=client, model="claude-sonnet-4-6")
+
+    assert result == first
 
 
 def test_cv_prompt_carries_no_fabrication_rule_and_profile_content():
