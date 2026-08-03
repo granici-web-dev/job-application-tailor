@@ -51,6 +51,13 @@ _CV_INSTRUCTIONS = {
         "candidate's interface work stronger, never as the lead.\n"
         "- In the skills section, list the programming languages, frameworks and development tools "
         "first, then the AI tooling, then the design skills.\n"
+        "- Group that section under category labels, in this order: frontend, backend and APIs, "
+        "infrastructure and tools, AI-assisted development, design and UX, methods. Write each "
+        "label in the posting's language and open its line with it in bold, as `**Label:**`, with "
+        "that group's skills following on the same line. A reader screening for a developer finds "
+        "the stack by category, not by scanning a flat list.\n"
+        "- Only label a group that has skills to hold. An empty category is an invitation to fill "
+        "it, and nothing in the skills section may be filled.\n"
         "- Within a role, put the development and technical bullets before the design ones. The "
         "roles themselves keep the order the master CV gives them — reverse-chronological order is "
         "not something relevance may reshuffle.\n" + _CV_RULES

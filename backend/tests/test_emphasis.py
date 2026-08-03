@@ -77,6 +77,22 @@ def test_engineering_posting_still_carries_the_full_stack():
         assert "overrides" not in instruction
 
 
+def test_engineering_cv_groups_the_skills_under_category_labels():
+    instruction = emphasis_instruction("engineering", kind="cv")
+
+    assert "**Label:**" in instruction
+    assert "frontend, backend and APIs" in instruction
+    # Categories are a developer's reading aid; a design posting keeps its own ordering rules.
+    assert "**Label:**" not in emphasis_instruction("design", kind="cv")
+
+
+def test_category_labels_never_license_an_empty_group():
+    """A label with nothing behind it is the one thing that would pull invented skills in."""
+    instruction = emphasis_instruction("engineering", kind="cv")
+
+    assert "Only label a group that has skills to hold" in instruction
+
+
 def test_cv_emphasis_forbids_padding_the_skills_it_promotes():
     for discipline in ("design", "engineering"):
         assert "not licence to expand them" in emphasis_instruction(discipline, kind="cv")
