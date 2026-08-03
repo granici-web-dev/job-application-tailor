@@ -53,6 +53,30 @@ def test_emphasis_never_licenses_dropping_the_other_track():
             assert "Never restate a role's title" in instruction
 
 
+def test_design_posting_keeps_the_training_and_its_stack_to_a_mention():
+    cv = emphasis_instruction("design", kind="cv")
+    letter = emphasis_instruction("design", kind="cover_letter")
+
+    # The CV thins the enumeration, not the entry, and the skills list stays design-heavy.
+    assert "named in passing" in cv
+    assert "The entry itself stays" in cv
+    assert "not be more programming entries than design ones" in cv
+    assert "Merging is not dropping" in cv
+    # The letter gives the training a sentence and a handful of technologies, not a paragraph.
+    assert "collapses into a single sentence" in letter
+    assert "at most four technologies" in letter
+    assert "knows both sides" in letter
+
+
+def test_engineering_posting_still_carries_the_full_stack():
+    """The shortening is a design-posting concession; an engineering application keeps everything."""
+    for kind in ("cv", "cover_letter"):
+        instruction = emphasis_instruction("engineering", kind=kind)
+
+        assert "at most four technologies" not in instruction
+        assert "overrides" not in instruction
+
+
 def test_cv_emphasis_forbids_padding_the_skills_it_promotes():
     for discipline in ("design", "engineering"):
         assert "not licence to expand them" in emphasis_instruction(discipline, kind="cv")
