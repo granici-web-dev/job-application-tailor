@@ -60,8 +60,8 @@ def test_design_posting_keeps_the_training_and_its_stack_to_a_mention():
     # The CV thins the enumeration, not the entry, and the skills list stays design-heavy.
     assert "named in passing" in cv
     assert "The entry itself stays" in cv
-    assert "not be more programming entries than design ones" in cv
-    assert "Merging is not dropping" in cv
+    assert "more of them than the implementation ones" in cv
+    assert "Folding is not dropping" in cv
     # The letter gives the training a sentence and a handful of technologies, not a paragraph.
     assert "collapses into a single sentence" in letter
     assert "at most four technologies" in letter
@@ -77,20 +77,23 @@ def test_engineering_posting_still_carries_the_full_stack():
         assert "overrides" not in instruction
 
 
-def test_engineering_cv_groups_the_skills_under_category_labels():
-    instruction = emphasis_instruction("engineering", kind="cv")
+def test_both_disciplines_group_the_skills_under_category_labels():
+    """Same bold form on both sides — it is the one the grounding check knows how to strip."""
+    for discipline in ("design", "engineering"):
+        assert "`**Label:**`" in emphasis_instruction(discipline, kind="cv")
 
-    assert "**Label:**" in instruction
-    assert "frontend, backend and APIs" in instruction
-    # Categories are a developer's reading aid; a design posting keeps its own ordering rules.
-    assert "**Label:**" not in emphasis_instruction("design", kind="cv")
+
+def test_each_discipline_leads_the_categories_with_its_own_track():
+    assert "UI/UX design, usability" in emphasis_instruction("design", kind="cv")
+    assert "frontend, backend and APIs" in emphasis_instruction("engineering", kind="cv")
 
 
 def test_category_labels_never_license_an_empty_group():
     """A label with nothing behind it is the one thing that would pull invented skills in."""
-    instruction = emphasis_instruction("engineering", kind="cv")
+    for discipline in ("design", "engineering"):
+        instruction = emphasis_instruction(discipline, kind="cv")
 
-    assert "Only label a group that has skills to hold" in instruction
+        assert "Only label a group that has skills to hold" in instruction
 
 
 def test_cv_emphasis_forbids_padding_the_skills_it_promotes():
