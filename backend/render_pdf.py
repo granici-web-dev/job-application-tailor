@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass
 
 import markdown as markdown_lib
 from weasyprint import HTML
@@ -80,6 +81,58 @@ li { margin: 0 0 2pt; }
 a { color: #111111; text-decoration: none; }
 strong { font-weight: 600; color: #111111; }
 """
+
+
+
+@dataclass(frozen=True)
+class CvLayout:
+    """The knobs the page limit may turn on the CV layout, defaults as in CV_CSS."""
+
+    compact_spacing: bool = False
+    margin_vertical_mm: float = 16
+    margin_horizontal_mm: float = 18
+    font_pt: float = 10
+
+    def describe(self) -> str:
+        spacing = "compact" if self.compact_spacing else "normal"
+        return (
+            f"spacing {spacing}, margins {self.margin_vertical_mm:g} × "
+            f"{self.margin_horizontal_mm:g} mm, body font {self.font_pt:g} pt"
+        )
+
+
+DEFAULT_CV_LAYOUT = CvLayout()
+
+# Tighter gaps between sections, entries and bullets. Appended after CV_CSS, so each rule
+# overrides the one with the same selector there; line height and font sizes stay as they are.
+COMPACT_SPACING_CSS = """
+h1 + p { margin: 0 0 6pt; }
+h2 { margin: 8pt 0 3pt; }
+h2:first-of-type { padding-top: 6pt; margin-top: 2pt; }
+hr { margin: 6pt 0; }
+hr:first-of-type { margin-top: 8pt; }
+h3 { margin: 5pt 0 1pt; }
+p { margin: 0 0 4pt; }
+ul { margin: 2pt 0 3pt 16pt; }
+li { margin: 0 0 1pt; }
+"""
+
+
+def cv_css(layout: CvLayout = DEFAULT_CV_LAYOUT) -> str:
+    parts = [CV_CSS]
+    if layout.compact_spacing:
+        parts.append(COMPACT_SPACING_CSS)
+    if (layout.margin_vertical_mm, layout.margin_horizontal_mm) != (
+        DEFAULT_CV_LAYOUT.margin_vertical_mm,
+        DEFAULT_CV_LAYOUT.margin_horizontal_mm,
+    ):
+        parts.append(
+            f"@page {{ margin: {layout.margin_vertical_mm:g}mm {layout.margin_horizontal_mm:g}mm; }}"
+        )
+    if layout.font_pt != DEFAULT_CV_LAYOUT.font_pt:
+        parts.append(f"body {{ font-size: {layout.font_pt:g}pt; }}")
+    return "\n".join(parts)
+
 
 HTML_DOCUMENT = (
     "<!DOCTYPE html><html><head><meta charset='utf-8'>"

@@ -2,15 +2,25 @@
 
 The limit is in the prompt, and the model reads it as advice: runs came out at three pages,
 and asking again with the page count in hand never brought one down. So the pipeline
-measures the rendered PDF and cuts here, in a fixed order, oldest roles first.
+measures the rendered PDF and shortens here, in a fixed order: first the content, oldest
+roles first, then the layout, within floors that keep the page readable.
 """
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Callable
+from dataclasses import dataclass, replace
+
+from backend.render_pdf import DEFAULT_CV_LAYOUT, CvLayout
+
+logger = logging.getLogger(__name__)
 
 MAX_CV_PAGES = 2
+MIN_MARGIN_MM = 15
+MIN_FONT_PT = 10
+FONT_STEP_PT = 0.5
 # Step one: roles that started before this year keep title, employer and dates, no bullets.
 EARLY_ROLE_YEAR = 2015
 # Step two: roles that started before this year keep at most TRIMMED_BULLETS bullets.
@@ -106,3 +116,73 @@ def _rewrite_roles(
 
     rebuilt = "\n".join(result)
     return (rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt), changed
+
+
+Render = Callable[[str, CvLayout], tuple[bytes, int]]
+
+
+@dataclass(frozen=True)
+class FittedCv:
+    markdown: str
+    pdf: bytes
+    pages: int
+    layout: CvLayout
+
+
+# Applied in order, each only while the CV is still over the limit.
+_CONTENT_STEPS = (
+    ("collapsed to one line", collapse_early_roles),
+    ("trimmed to two bullets", trim_older_roles),
+)
+_LAYOUT_STEPS = (
+    ("tighter spacing", lambda layout: replace(layout, compact_spacing=True)),
+    (
+        f"margins down to {MIN_MARGIN_MM} mm",
+        lambda layout: replace(layout, margin_vertical_mm=MIN_MARGIN_MM, margin_horizontal_mm=MIN_MARGIN_MM),
+    ),
+    (
+        f"body font down to at least {MIN_FONT_PT} pt",
+        lambda layout: replace(layout, font_pt=max(MIN_FONT_PT, layout.font_pt - FONT_STEP_PT)),
+    ),
+)
+
+
+def fit_to_page_limit(cv_markdown: str, render: Render) -> FittedCv:
+    """The CV shortened without the model until it fits MAX_CV_PAGES, or as far as allowed.
+
+    Content first — only the oldest roles' bullets go, never a title or a date, so what is
+    left has already passed the fact check — then the layout, within its floors. A CV that
+    still does not fit goes out as it is, with a warning: a third page is better than a
+    stopped application.
+    """
+    layout = DEFAULT_CV_LAYOUT
+    pdf, pages = render(cv_markdown, layout)
+    logger.info("CV rendered to %d pages", pages)
+
+    for description, shorten in _CONTENT_STEPS:
+        if pages <= MAX_CV_PAGES:
+            break
+        shorter, changed = shorten(cv_markdown)
+        if not changed:
+            continue
+        pdf, shorter_pages = render(shorter, layout)
+        logger.warning(
+            "CV was %d pages; %s: %s -> %d pages", pages, description, "; ".join(changed), shorter_pages
+        )
+        cv_markdown, pages = shorter, shorter_pages
+
+    for description, adjust in _LAYOUT_STEPS:
+        if pages <= MAX_CV_PAGES:
+            break
+        adjusted = adjust(layout)
+        if adjusted == layout:
+            logger.warning("CV was %d pages; %s: already at the floor, nothing to change", pages, description)
+            continue
+        pdf, adjusted_pages = render(cv_markdown, adjusted)
+        logger.warning("CV was %d pages; %s -> %d pages", pages, description, adjusted_pages)
+        layout, pages = adjusted, adjusted_pages
+
+    if pages > MAX_CV_PAGES:
+        logger.warning("CV is still %d pages after every shortening step; it goes out as it is", pages)
+    logger.info("CV layout: %s", layout.describe())
+    return FittedCv(markdown=cv_markdown, pdf=pdf, pages=pages, layout=layout)

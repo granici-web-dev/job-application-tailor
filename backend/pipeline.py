@@ -15,8 +15,8 @@ from backend.fetch import fetch_job_text
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
-from backend.page_limit import MAX_CV_PAGES, collapse_early_roles, trim_older_roles
-from backend.render_pdf import CV_CSS, render_markdown_to_pdf, render_markdown_with_page_count
+from backend.page_limit import fit_to_page_limit
+from backend.render_pdf import CvLayout, cv_css, render_markdown_to_pdf, render_markdown_with_page_count
 from backend.tailor_cv import (
     apply_position_headline,
     move_skills_after_experience,
@@ -100,13 +100,13 @@ def run_pipeline(
         # After humanize, which rejects a candidate whose headings moved — including ours.
         return move_skills_after_experience(cv)
 
-    def render_cv(cv: str) -> tuple[bytes, int]:
+    def render_cv(cv: str, layout: CvLayout) -> tuple[bytes, int]:
         return render_markdown_with_page_count(
-            cv, css=CV_CSS, photo=photo, include_photo=include_photo, line_breaks=True
+            cv, css=cv_css(layout), photo=photo, include_photo=include_photo, line_breaks=True
         )
 
-    cv_markdown = finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV"))
-    cv_markdown, cv_pdf = _fit_to_page_limit(cv_markdown, render_cv)
+    fitted = fit_to_page_limit(finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv)
+    cv_markdown, cv_pdf = fitted.markdown, fitted.pdf
 
     # No humanize pass on the letter: all but the opening and one sentence are the candidate's
     # own template, which a rewrite could only move away from.
@@ -211,35 +211,3 @@ def _fact_checked(
     )
 
 
-
-# Applied in order, each only while the CV is still over the limit.
-_SHORTENING_STEPS = (
-    ("collapsed to one line", collapse_early_roles),
-    ("trimmed to two bullets", trim_older_roles),
-)
-
-
-def _fit_to_page_limit(
-    cv_markdown: str, render: Callable[[str], tuple[bytes, int]]
-) -> tuple[str, bytes]:
-    """The CV and its PDF, cut down without the model until it fits MAX_CV_PAGES.
-
-    Every step only removes: bullets of the oldest roles, never their title or dates. What
-    it leaves has already passed the fact check, so it needs no second one.
-    """
-    cv_pdf, pages = render(cv_markdown)
-    logger.info("CV rendered to %d pages", pages)
-    for description, shorten in _SHORTENING_STEPS:
-        if pages <= MAX_CV_PAGES:
-            break
-        shorter, changed = shorten(cv_markdown)
-        if not changed:
-            continue
-        cv_pdf, shorter_pages = render(shorter)
-        logger.warning(
-            "CV was %d pages; %s: %s -> %d pages", pages, description, "; ".join(changed), shorter_pages
-        )
-        cv_markdown, pages = shorter, shorter_pages
-    if pages > MAX_CV_PAGES:
-        logger.warning("CV is still %d pages after every shortening step", pages)
-    return cv_markdown, cv_pdf
