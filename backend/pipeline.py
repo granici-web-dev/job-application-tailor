@@ -18,7 +18,12 @@ from backend.profile import load_photo_bytes, load_profile
 from backend.page_limit import MAX_CV_PAGES, collapse_early_roles, trim_older_roles
 from backend.render_pdf import CV_CSS, render_markdown_to_pdf, render_markdown_with_page_count
 from backend.tailor_cv import apply_position_headline, move_skills_after_experience, tailor_cv
-from backend.tailor_letter import build_letterhead, tailor_letter
+from backend.tailor_letter import (
+    build_letterhead,
+    parse_letter_template,
+    tailor_letter,
+    template_findings,
+)
 from backend.tracker import append_application
 from backend.utils import cover_letter_filename, cv_filename, resolve_unique_company_dir
 
@@ -91,20 +96,21 @@ def run_pipeline(
     cv_markdown = finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV"))
     cv_markdown, cv_pdf = _fit_to_page_limit(cv_markdown, render_cv)
 
-    def draft_letter(feedback: str | None) -> str:
-        letter = tailor_letter(
-            analysis, profile, client=client, model=model, language=language, feedback=feedback
-        )
-        return humanize(letter, kind="cover_letter", client=client, model=model)
+    # No humanize pass on the letter: all but the opening and one sentence are the candidate's
+    # own template, which a rewrite could only move away from.
+    letter_template = parse_letter_template(profile.cover_letter_template)
 
-    def check_letter_facts(letter: str) -> list[str]:
-        return check_letter(
+    def draft_letter(feedback: str | None) -> str:
+        return tailor_letter(analysis, profile, client=client, model=model, feedback=feedback)
+
+    def check_letter_body(letter: str) -> list[str]:
+        return template_findings(letter, letter_template, analysis) + check_letter(
             letter, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
         )
 
-    cover_letter_markdown = _fact_checked(draft_letter, check_letter_facts, kind="cover letter")
+    cover_letter_markdown = _fact_checked(draft_letter, check_letter_body, kind="cover letter")
     logger.info("Cover letter body has %d words", len(cover_letter_markdown.split()))
-    # After humanize, so the guard compares body against body and the letterhead stays verbatim.
+    # The letterhead is built from data and goes on after the check, which reads the body only.
     cover_letter_markdown = (
         build_letterhead(profile.personal, analysis, today=today, letter_body=cover_letter_markdown)
         + cover_letter_markdown

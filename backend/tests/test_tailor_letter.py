@@ -1,8 +1,20 @@
+import json
 from datetime import date
+from types import SimpleNamespace
+from unittest.mock import Mock
 
+import pytest
+
+from backend.errors import LLMError, ProfileError
 from backend.models import JobAnalysis
-from backend.profile import PersonalInfo
-from backend.tailor_letter import build_letterhead
+from backend.profile import PersonalInfo, Profile
+from backend.tailor_letter import (
+    assemble_letter,
+    build_letterhead,
+    parse_letter_template,
+    tailor_letter,
+    template_findings,
+)
 
 GERMAN_BODY = "Sehr geehrte Damen und Herren,\n\nText.\n\nMit freundlichen Grüßen\nSerghei Granici"
 ENGLISH_BODY = "Dear Sir or Madam,\n\nText.\n\nKind regards,\nSerghei Granici"
@@ -119,3 +131,146 @@ def test_date_line_falls_back_to_the_bare_date_without_a_sender_location():
 
     assert '<p class="letter-date">27. Juli 2026</p>' in head
     assert head.startswith('<p class="letter-sender">Serghei Granici<br>granici.design@gmail.com</p>')
+
+
+TEMPLATE = """<!-- Kommentar. -->
+
+[ANREDE — z. B. „Sehr geehrte Frau Sennhenn,"]
+
+mit großem Interesse habe ich Ihre Ausschreibung als [POSITION] gelesen.
+
+Aktuell verantworte ich bei CorLab Projekte komplett selbst. Für eine staatliche Stelle entwerfe ich ein Verwaltungssystem. Ein zweites System habe ich auditiert.
+
+Davor war ich über zehn Jahre im UI/UX-Design tätig.
+
+Ich bringe mich gerne langfristig bei [UNTERNEHMEN] ein.
+
+Mit freundlichen Grüßen
+Serghei Granici"""
+
+CORLAB = (
+    "Aktuell verantworte ich bei CorLab Projekte komplett selbst. Für eine staatliche Stelle "
+    "entwerfe ich ein Verwaltungssystem. Ein zweites System habe ich auditiert."
+)
+
+
+def _letter(adjusted=CORLAB, intro="Ihre Ausschreibung hat mich angesprochen."):
+    return assemble_letter(
+        parse_letter_template(TEMPLATE),
+        _analysis(),
+        salutation="Sehr geehrte Damen und Herren,",
+        intro=intro,
+        adjusted=adjusted,
+    )
+
+
+def _findings(letter):
+    return template_findings(letter, parse_letter_template(TEMPLATE), _analysis())
+
+
+def test_the_template_splits_into_the_parts_the_letter_is_built_from():
+    template = parse_letter_template(TEMPLATE)
+
+    assert template.intro.startswith("mit großem Interesse")
+    assert template.adjustable == CORLAB
+    assert template.fixed == (
+        "Davor war ich über zehn Jahre im UI/UX-Design tätig.",
+        "Ich bringe mich gerne langfristig bei [UNTERNEHMEN] ein.",
+    )
+    assert template.signature == "Mit freundlichen Grüßen\nSerghei Granici"
+
+
+def test_a_template_without_enough_paragraphs_is_rejected():
+    with pytest.raises(ProfileError):
+        parse_letter_template("[ANREDE]\n\nText.\n\nGrüße")
+
+
+def test_the_fixed_paragraphs_go_in_word_for_word_with_placeholders_filled():
+    letter = _letter()
+
+    assert letter.startswith("Sehr geehrte Damen und Herren,\n\nIhre Ausschreibung hat mich angesprochen.")
+    assert "Ich bringe mich gerne langfristig bei Musterfirma Testwerk GmbH ein." in letter
+    assert letter.endswith("Mit freundlichen Grüßen\nSerghei Granici")
+    assert _findings(letter) == []
+
+
+def test_one_changed_sentence_in_the_adjustable_paragraph_is_allowed():
+    replaced = CORLAB.replace(
+        "Ein zweites System habe ich auditiert.", "Ein zweites System habe ich auditiert und neu gestaltet."
+    )
+    added = CORLAB + " Dabei arbeite ich durchgängig mit Claude Code."
+
+    assert _findings(_letter(adjusted=replaced)) == []
+    assert _findings(_letter(adjusted=added)) == []
+
+
+def test_two_changed_sentences_in_the_adjustable_paragraph_are_caught():
+    adjusted = CORLAB.replace("komplett selbst.", "eigenständig.").replace("auditiert.", "geprüft.")
+
+    findings = _findings(_letter(adjusted=adjusted))
+
+    assert len(findings) == 1
+    assert "2 sentences differ from the template; change at most 1" in findings[0]
+
+
+def test_a_reworded_fixed_paragraph_is_caught():
+    letter = _letter().replace("über zehn Jahre", "mehr als zehn Jahre")
+
+    assert _findings(letter) == [
+        "The paragraph starting 'Davor war ich über zehn Jahre …' must match the template word for word."
+    ]
+
+
+def test_an_opening_split_into_two_paragraphs_is_caught():
+    findings = _findings(_letter(intro="Erster Absatz.\n\nZweiter Absatz."))
+
+    assert len(findings) == 1
+    assert "The letter has 7 paragraphs; it must have 6" in findings[0]
+
+
+def test_a_leftover_placeholder_is_caught():
+    findings = _findings(_letter(intro="Ihre Ausschreibung als [POSITION] hat mich angesprochen."))
+
+    assert findings == ["The letter still contains template placeholders: [POSITION]."]
+
+
+def test_a_letter_over_300_words_is_caught():
+    findings = _findings(_letter(intro="Wort " * 300))
+
+    assert len(findings) == 1
+    assert "the limit is 300" in findings[0]
+
+
+def _profile(template=TEMPLATE):
+    return Profile(
+        master_cv_markdown="# Serghei Granici",
+        cover_letter_template=template,
+        personal=PERSONAL,
+    )
+
+
+def _client(text):
+    client = Mock()
+    client.messages.create.return_value = SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
+    return client
+
+
+def test_tailor_letter_assembles_the_model_parts_around_the_template():
+    parts = {
+        "salutation": "Sehr geehrte Damen und Herren,",
+        "intro": "Ihre Ausschreibung hat mich angesprochen.",
+        "adjusted_paragraph": CORLAB,
+    }
+    client = _client("```json\n" + json.dumps(parts) + "\n```")
+
+    letter = tailor_letter(_analysis(), _profile(), client=client, model="m", feedback="## Fact check\n- x")
+
+    assert letter == _letter()
+    request = client.messages.create.call_args.kwargs["messages"][0]["content"]
+    assert "## Paragraph you may adjust by one sentence\n" + CORLAB in request
+    assert request.endswith("## Fact check\n- x")
+
+
+def test_tailor_letter_rejects_an_answer_that_is_not_the_three_parts():
+    with pytest.raises(LLMError):
+        tailor_letter(_analysis(), _profile(), client=_client("Sehr geehrte Damen und Herren, ..."), model="m")

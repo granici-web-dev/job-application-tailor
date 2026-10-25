@@ -34,7 +34,15 @@ def _message(text):
 
 
 CV_MARKDOWN = "# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
-LETTER_MARKDOWN = "Dear Acme GmbH team,\n\nKind regards,\nIvan"
+LETTER_JSON = json.dumps(
+    {
+        "salutation": "Dear Hiring Team,",
+        "intro": "I read your posting for Senior Backend Engineer at Acme GmbH with great interest.",
+        "adjusted_paragraph": (
+            "At DataForge GmbH I build REST APIs in Python with FastAPI. I also design PostgreSQL schemas."
+        ),
+    }
+)
 
 
 def _client():
@@ -43,8 +51,7 @@ def _client():
         _message(ANALYSIS_JSON),
         _message(CV_MARKDOWN),
         _message(CV_MARKDOWN),
-        _message(LETTER_MARKDOWN),
-        _message(LETTER_MARKDOWN),
+        _message(LETTER_JSON),
     ]
     return client
 
@@ -72,7 +79,8 @@ def test_run_pipeline_writes_pdfs_drafts_and_tracker_row(tmp_path):
     letter_draft = (drafts / "cover_letter.md").read_text(encoding="utf-8")
     assert letter_draft.startswith('<p class="letter-sender">Ivan Petrov<br>Siegburg, Germany')
     assert '<p class="letter-subject">Application for Senior Backend Engineer</p>' in letter_draft
-    assert letter_draft.endswith("Dear Acme GmbH team,\n\nKind regards,\nIvan")
+    assert "Dear Hiring Team,\n\nI read your posting for Senior Backend Engineer" in letter_draft
+    assert "glad to join Acme GmbH.\n\nKind regards,\nIvan Petrov" in letter_draft
 
     assert result.tracker_path == tmp_path / "applications_tracker.xlsx"
     assert result.tracker_row == 2
@@ -167,8 +175,7 @@ def test_education_stays_below_experience_on_an_engineering_posting(tmp_path):
         _message(analysis),
         _message(cv),
         _message(cv),
-        _message(LETTER_MARKDOWN),
-        _message(LETTER_MARKDOWN),
+        _message(LETTER_JSON),
     ]
 
     result = run_pipeline(
@@ -244,7 +251,7 @@ def _run(tmp_path, profile_dir, client):
 def test_a_cv_that_fails_the_fact_check_is_retried_with_the_findings(tmp_path):
     invented = SHORT_MASTER.replace("with FastAPI", "with FastAPI for 99 clients")
     client = _client_returning(
-        invented, invented, SHORT_MASTER, SHORT_MASTER, LETTER_MARKDOWN, LETTER_MARKDOWN
+        invented, invented, SHORT_MASTER, SHORT_MASTER, LETTER_JSON
     )
 
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
@@ -267,8 +274,10 @@ def test_a_cv_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path)
 
 
 def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path):
-    bad_letter = "Dear Acme GmbH team,\n\nAt DataForge GmbH I served 99 clients.\n\nKind regards,\nIvan"
-    client = _client_returning(SHORT_MASTER, SHORT_MASTER, *[bad_letter] * 6)
+    bad_letter = json.dumps(
+        {**json.loads(LETTER_JSON), "intro": "At DataForge GmbH I served 99 clients."}
+    )
+    client = _client_returning(SHORT_MASTER, SHORT_MASTER, *[bad_letter] * 3)
 
     with pytest.raises(FactCheckError, match="cover letter"):
         _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
@@ -278,11 +287,11 @@ def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_p
 
 def test_a_cv_over_two_pages_collapses_the_early_roles_without_asking_the_model(tmp_path):
     master = SHORT_MASTER + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 150)
-    client = _client_returning(master, master, LETTER_MARKDOWN, LETTER_MARKDOWN)
+    client = _client_returning(master, master, LETTER_JSON)
 
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
 
-    assert client.messages.create.call_count == 5
+    assert client.messages.create.call_count == 4
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert "### Junior Developer — Oldtech AG, Riga (2010 – 2014)" in draft
     assert "Altsystem" not in draft
@@ -296,7 +305,7 @@ def test_a_cv_still_too_long_trims_the_roles_before_2020_to_two_bullets(tmp_path
         + _long_role("Developer — Midtech AG, Riga", "2017 – 2020", 150)
         + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 3)
     )
-    client = _client_returning(master, master, LETTER_MARKDOWN, LETTER_MARKDOWN)
+    client = _client_returning(master, master, LETTER_JSON)
 
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
 

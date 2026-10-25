@@ -2,7 +2,7 @@ from backend.emphasis import emphasis_instruction, emphasis_section
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
 from backend.tailor_cv import build_cv_prompt
-from backend.tailor_letter import build_letter_prompt
+from backend.tailor_letter import build_letter_prompt, parse_letter_template
 
 PROFILE = Profile(
     personal=PersonalInfo(
@@ -15,7 +15,10 @@ PROFILE = Profile(
         languages=[],
     ),
     master_cv_markdown="## Kenntnisse\nReact, TypeScript, UI/UX Design, Figma",
-    cover_letter_template="Sehr geehrte Damen und Herren,\n\nMit freundlichen Grüßen\nSerghei",
+    cover_letter_template=(
+        "[ANREDE]\n\nEinleitung.\n\nAktuell bei CorLab.\n\nAb sofort verfügbar.\n\n"
+        "Mit freundlichen Grüßen\nSerghei"
+    ),
 )
 
 
@@ -116,21 +119,19 @@ def test_frontend_posting_reaches_the_cv_prompt_as_development_first():
     assert "design-first" not in user_message
 
 
-def test_design_posting_reaches_the_letter_prompt():
-    _, user_message = build_letter_prompt(_analysis("design"), PROFILE)
+def test_the_letter_prompt_carries_no_emphasis_since_the_template_fixes_the_order():
+    template = parse_letter_template(PROFILE.cover_letter_template)
 
-    assert "argue design first" in user_message
-
-
-def test_engineering_posting_reaches_the_letter_prompt():
-    _, user_message = build_letter_prompt(_analysis("engineering", "Fullstack Developer"), PROFILE)
-
-    assert "argue development first" in user_message
+    for discipline in ("design", "engineering"):
+        _, user_message = build_letter_prompt(_analysis(discipline), PROFILE, template)
+        assert "## Emphasis for this posting" not in user_message
 
 
 def test_unclassified_posting_leaves_the_prompts_as_they_were():
     _, cv_message = build_cv_prompt(_analysis("unknown", "Projektmanager"), PROFILE)
-    _, letter_message = build_letter_prompt(_analysis("unknown", "Projektmanager"), PROFILE)
+    _, letter_message = build_letter_prompt(
+        _analysis("unknown", "Projektmanager"), PROFILE, parse_letter_template(PROFILE.cover_letter_template)
+    )
 
     assert "## Emphasis for this posting" not in cv_message
     assert "## Emphasis for this posting" not in letter_message

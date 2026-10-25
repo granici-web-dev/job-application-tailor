@@ -33,7 +33,15 @@ ANALYSIS_JSON = json.dumps(
     }
 )
 CV_MARKDOWN = "# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
-LETTER_MARKDOWN = "Dear Acme GmbH team,\n\nKind regards,\nIvan"
+LETTER_JSON = json.dumps(
+    {
+        "salutation": "Dear Hiring Team,",
+        "intro": "I read your posting for Senior Backend Engineer at Acme GmbH with great interest.",
+        "adjusted_paragraph": (
+            "At DataForge GmbH I build REST APIs in Python with FastAPI. I also design PostgreSQL schemas."
+        ),
+    }
+)
 
 
 def _message(text):
@@ -46,8 +54,7 @@ def _fake_client():
         _message(ANALYSIS_JSON),
         _message(CV_MARKDOWN),
         _message(CV_MARKDOWN),
-        _message(LETTER_MARKDOWN),
-        _message(LETTER_MARKDOWN),
+        _message(LETTER_JSON),
     ]
     return client
 

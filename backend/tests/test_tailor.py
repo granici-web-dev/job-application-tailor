@@ -4,7 +4,9 @@ from unittest.mock import Mock
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
 from backend.tailor_cv import build_cv_prompt, tailor_cv
-from backend.tailor_letter import build_letter_prompt, tailor_letter
+import json
+
+from backend.tailor_letter import build_letter_prompt, parse_letter_template, tailor_letter
 
 ANALYSIS = JobAnalysis.from_response_dict(
     {
@@ -28,7 +30,10 @@ PROFILE = Profile(
         languages=["German (B2)", "English (C1)"],
     ),
     master_cv_markdown="## Skills\nPython, FastAPI, PostgreSQL, Docker",
-    cover_letter_template="Dear team,\n\nKind regards,\nIvan",
+    cover_letter_template=(
+        "[ANREDE]\n\nOpening.\n\nAt DataForge I build APIs.\n\nAvailable now for [UNTERNEHMEN].\n\n"
+        "Kind regards,\nIvan"
+    ),
 )
 
 
@@ -122,17 +127,31 @@ def test_cv_prompt_forbids_terms_not_in_master_cv():
 
 
 def test_letter_prompt_carries_no_fabrication_rule_and_template():
-    system_prompt, user_message = build_letter_prompt(ANALYSIS, PROFILE)
+    system_prompt, user_message = build_letter_prompt(
+        ANALYSIS, PROFILE, parse_letter_template(PROFILE.cover_letter_template)
+    )
 
     assert "never add a skill" in system_prompt.lower()
-    assert "Dear team," in user_message
+    assert "At DataForge I build APIs." in user_message
+    assert "Available now for Acme GmbH." in user_message
     assert "Acme GmbH" in user_message
 
 
-def test_tailor_letter_returns_markdown_from_model():
-    client = _client_returning("Dear Acme GmbH team,\n\nKind regards,\nIvan")
+def test_tailor_letter_returns_the_assembled_letter_from_one_model_call():
+    client = _client_returning(
+        json.dumps(
+            {
+                "salutation": "Dear team,",
+                "intro": "Your posting at Acme GmbH caught my eye.",
+                "adjusted_paragraph": "At DataForge I build APIs.",
+            }
+        )
+    )
 
     result = tailor_letter(ANALYSIS, PROFILE, client=client, model="claude-sonnet-4-6")
 
-    assert "Acme GmbH" in result
+    assert result == (
+        "Dear team,\n\nYour posting at Acme GmbH caught my eye.\n\nAt DataForge I build APIs."
+        "\n\nAvailable now for Acme GmbH.\n\nKind regards,\nIvan"
+    )
     assert client.messages.create.call_count == 1

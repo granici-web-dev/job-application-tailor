@@ -1,10 +1,14 @@
-Dear Hiring Team,
+<!-- Fixture template: salutation, opening, adjustable paragraph, fixed paragraphs, signature. -->
 
-[Opening: why this role and company.]
+[ANREDE]
 
-[Body: connect my background to the role's main needs.]
+I read your posting for [POSITION] with great interest.
 
-[Closing: availability and thanks.]
+At DataForge GmbH I build REST APIs in Python with FastAPI. I also design PostgreSQL schemas.
+
+Before that I developed Flask services at Nordwind AG.
+
+I am available immediately and would be glad to join [UNTERNEHMEN].
 
 Kind regards,
 Ivan Petrov

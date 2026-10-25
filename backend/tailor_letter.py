@@ -2,19 +2,24 @@ from __future__ import annotations
 
 import json
 import re
+from dataclasses import dataclass
 from datetime import date
 from html import escape
 from pathlib import Path
 
 from anthropic import Anthropic
 
-from backend.emphasis import emphasis_section
+from backend.analyze import _strip_json_fences
+from backend.errors import LLMError, ProfileError
 from backend.llm import complete
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
 
 LETTER_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "tailor_letter.md"
 MAX_TOKENS = 1500
+MAX_LETTER_WORDS = 300
+# At most this many sentences of the adjustable paragraph may differ from the template.
+MAX_CHANGED_SENTENCES = 1
 
 GERMAN_MONTHS = (
     "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -22,6 +27,50 @@ GERMAN_MONTHS = (
 )
 GERMAN_MARKERS = ("Sehr geehrte", "Mit freundlichen Grüßen", "Guten Tag")
 POSTCODE = re.compile(r"^\d{4,6}\s+")
+HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
+PLACEHOLDER = re.compile(r"\[[A-ZÄÖÜ][^\]]*\]")
+SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])")
+
+
+@dataclass(frozen=True)
+class LetterTemplate:
+    """The cover letter template, read as the paragraphs the letter is assembled from.
+
+    The order is fixed: a salutation placeholder, the opening paragraph the model rewrites
+    for the posting, the paragraph it may adjust by one sentence, the paragraphs that go in
+    word for word, and the signature.
+    """
+
+    intro: str
+    adjustable: str
+    fixed: tuple[str, ...]
+    signature: str
+
+
+def parse_letter_template(template_text: str) -> LetterTemplate:
+    text = HTML_COMMENT.sub("", template_text)
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
+    if len(paragraphs) < 5:
+        raise ProfileError(
+            "The cover letter template needs at least five paragraphs: salutation, opening, the "
+            "paragraph about the current position, at least one more paragraph, and the signature."
+        )
+    return LetterTemplate(
+        intro=paragraphs[1],
+        adjustable=paragraphs[2],
+        fixed=tuple(paragraphs[3:-1]),
+        signature=paragraphs[-1],
+    )
+
+
+def fill_placeholders(text: str, analysis: JobAnalysis) -> str:
+    for placeholder, value in (
+        ("[POSITION]", analysis.job_title),
+        ("[UNTERNEHMEN]", analysis.company_name),
+        ("[COMPANY]", analysis.company_name),
+    ):
+        text = text.replace(placeholder, value)
+    return text
 
 
 def tailor_letter(
@@ -30,14 +79,98 @@ def tailor_letter(
     *,
     client: Anthropic,
     model: str,
-    language: str | None = None,
     feedback: str | None = None,
 ) -> str:
-    """`feedback` carries what the pipeline found wrong with the previous attempt."""
-    system_prompt, user_message = build_letter_prompt(analysis, profile, language)
+    """The letter body, salutation to signature, assembled around the model's three parts.
+
+    The model writes the salutation, the opening and the adjusted paragraph; every other
+    paragraph comes from the template untouched. `feedback` carries what the pipeline found
+    wrong with the previous attempt.
+    """
+    template = parse_letter_template(profile.cover_letter_template)
+    system_prompt, user_message = build_letter_prompt(analysis, profile, template)
     if feedback:
         user_message += "\n\n" + feedback
-    return complete(client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS)
+    raw = complete(client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS)
+    try:
+        parts = json.loads(_strip_json_fences(raw))
+        salutation, intro, adjusted = (
+            parts["salutation"], parts["intro"], parts["adjusted_paragraph"]
+        )
+    except (json.JSONDecodeError, KeyError, TypeError) as error:
+        raise LLMError("The model did not return the cover letter parts in the expected form.") from error
+    return assemble_letter(template, analysis, salutation=salutation, intro=intro, adjusted=adjusted)
+
+
+def assemble_letter(
+    template: LetterTemplate, analysis: JobAnalysis, *, salutation: str, intro: str, adjusted: str
+) -> str:
+    paragraphs = [
+        salutation.strip(),
+        intro.strip(),
+        adjusted.strip(),
+        *(fill_placeholders(paragraph, analysis) for paragraph in template.fixed),
+        template.signature,
+    ]
+    return "\n\n".join(paragraphs)
+
+
+def template_findings(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> list[str]:
+    """Where the letter body departs from the template beyond what the model may change.
+
+    Checked in code, not trusted to the prompt: the fixed paragraphs are the candidate's own
+    words, and the model rewrites a paragraph it was told to copy as readily as one it was
+    told to write.
+    """
+    findings: list[str] = []
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
+    expected_fixed = [fill_placeholders(p, analysis) for p in template.fixed] + [template.signature]
+    expected_count = 3 + len(expected_fixed)
+    if len(paragraphs) != expected_count:
+        return [
+            f"The letter has {len(paragraphs)} paragraphs; it must have {expected_count}: the "
+            "salutation, one opening paragraph, the adjusted paragraph, then the template's "
+            "remaining paragraphs and signature. Write the opening as a single paragraph."
+        ]
+
+    for got, want in zip(paragraphs[3:], expected_fixed):
+        if _squashed(got) != _squashed(want):
+            findings.append(f"The paragraph starting '{_start(want)}' must match the template word for word.")
+
+    template_sentences = [_squashed(s) for s in _sentences(fill_placeholders(template.adjustable, analysis))]
+    adjusted_sentences = [_squashed(s) for s in _sentences(paragraphs[2])]
+    added = [s for s in adjusted_sentences if s not in template_sentences]
+    removed = [s for s in template_sentences if s not in adjusted_sentences]
+    if max(len(added), len(removed)) > MAX_CHANGED_SENTENCES:
+        findings.append(
+            f"In the paragraph starting '{_start(template.adjustable)}', {max(len(added), len(removed))} "
+            f"sentences differ from the template; change at most {MAX_CHANGED_SENTENCES} and copy the "
+            "rest word for word."
+        )
+
+    leftover = PLACEHOLDER.findall(letter)
+    if leftover:
+        findings.append(f"The letter still contains template placeholders: {', '.join(leftover)}.")
+
+    words = len(letter.split())
+    if words > MAX_LETTER_WORDS:
+        findings.append(
+            f"The letter has {words} words; the limit is {MAX_LETTER_WORDS}. Shorten the opening "
+            "paragraph, or drop the sentence you added."
+        )
+    return findings
+
+
+def _sentences(paragraph: str) -> list[str]:
+    return [part for part in SENTENCE_END.split(paragraph.strip()) if part.strip()]
+
+
+def _squashed(text: str) -> str:
+    return " ".join(text.split())
+
+
+def _start(paragraph: str) -> str:
+    return " ".join(paragraph.split()[:6]) + " …"
 
 
 def build_letterhead(
@@ -96,22 +229,22 @@ def _sender_city(location: str | None) -> str | None:
 
 
 def build_letter_prompt(
-    analysis: JobAnalysis, profile: Profile, language: str | None = None
+    analysis: JobAnalysis, profile: Profile, template: LetterTemplate
 ) -> tuple[str, str]:
     system_prompt = LETTER_PROMPT_PATH.read_text(encoding="utf-8")
-    language_instruction = (
-        f"Write the cover letter in {language}."
-        if language
-        else "Write the cover letter in the same language as the job analysis below."
-    )
+    fixed = [fill_placeholders(p, analysis) for p in template.fixed] + [template.signature]
+    budget = MAX_LETTER_WORDS - sum(len(p.split()) for p in fixed)
     user_message = "\n\n".join(
         [
-            language_instruction,
             "## Candidate contact details\n" + profile.personal.as_contact_lines(),
-            "## Cover letter template (tone, structure, signature)\n" + profile.cover_letter_template,
-            "## Candidate master CV (real experience to draw on)\n" + profile.master_cv_markdown,
+            "## Opening paragraph to rewrite for this posting\n" + template.intro,
+            "## Paragraph you may adjust by one sentence\n" + template.adjustable,
+            "## Paragraphs that follow word for word (context only, do not return them)\n"
+            + "\n\n".join(fixed),
+            f"## Word budget\nThe salutation, the opening and the adjusted paragraph together may "
+            f"use at most {budget} words.",
+            "## Candidate master CV (the only source of facts)\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
-            *emphasis_section(analysis.discipline, kind="cover_letter"),
         ]
     )
     return system_prompt, user_message
