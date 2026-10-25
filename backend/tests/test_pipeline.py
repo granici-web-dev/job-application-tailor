@@ -7,8 +7,10 @@ from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pypdf
+import pytest
 from openpyxl import load_workbook
 
+from backend.errors import FactCheckError
 from backend.pipeline import run_pipeline
 from backend.tracker import read_applications
 
@@ -182,3 +184,87 @@ def test_education_stays_below_experience_on_an_engineering_posting(tmp_path):
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert draft.index("## Berufserfahrung") < draft.index("## Ausbildung")
+
+
+SHORT_MASTER = """# Ivan Petrov
+
+## Summary
+Backend engineer.
+
+## Skills
+Python, FastAPI
+
+## Experience
+
+### Backend Engineer — DataForge GmbH, Berlin
+
+_2021 – heute_
+
+- Built REST services in Python with FastAPI
+"""
+
+def _profile_dir_with_master(tmp_path, master):
+    profile_dir = tmp_path / "profile"
+    profile_dir.mkdir()
+    for name in ("cover_letter_template.md", "personal.json"):
+        shutil.copy(PROFILE_DIR / name, profile_dir / name)
+    (profile_dir / "master_cv.md").write_text(master, encoding="utf-8")
+    return profile_dir
+
+
+def _client_returning(*texts):
+    client = Mock()
+    client.messages.create.side_effect = [_message(ANALYSIS_JSON)] + [_message(text) for text in texts]
+    return client
+
+
+def _user_messages(client):
+    return [call.kwargs["messages"][0]["content"] for call in client.messages.create.call_args_list]
+
+
+def _run(tmp_path, profile_dir, client):
+    return run_pipeline(
+        job_url="https://example.com/jobs/1",
+        job_text="Senior Backend Engineer at Acme GmbH.",
+        output_dir=tmp_path / "out",
+        profile_dir=profile_dir,
+        client=client,
+        model="claude-sonnet-4-6",
+        language=None,
+        today=date(2026, 6, 1),
+    )
+
+
+def test_a_cv_that_fails_the_fact_check_is_retried_with_the_findings(tmp_path):
+    invented = SHORT_MASTER.replace("with FastAPI", "with FastAPI for 99 clients")
+    client = _client_returning(
+        invented, invented, SHORT_MASTER, SHORT_MASTER, LETTER_MARKDOWN, LETTER_MARKDOWN
+    )
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    retry_request = _user_messages(client)[3]
+    assert "## Fact check" in retry_request
+    assert "The number 99" in retry_request
+    assert "99" not in (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+
+
+def test_a_cv_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path):
+    invented = SHORT_MASTER.replace("with FastAPI", "with FastAPI for 99 clients")
+    client = _client_returning(*[invented] * 6)
+
+    with pytest.raises(FactCheckError, match="The number 99 does not appear in the master CV"):
+        _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    assert client.messages.create.call_count == 7
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path):
+    bad_letter = "Dear Acme GmbH team,\n\nAt DataForge GmbH I served 99 clients.\n\nKind regards,\nIvan"
+    client = _client_returning(SHORT_MASTER, SHORT_MASTER, *[bad_letter] * 6)
+
+    with pytest.raises(FactCheckError, match="cover letter"):
+        _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    assert not (tmp_path / "out").exists()

@@ -35,8 +35,12 @@ def tailor_cv(
     client: Anthropic,
     model: str,
     language: str | None = None,
+    feedback: str | None = None,
 ) -> str:
+    """`feedback` carries what the pipeline found wrong with the previous attempt."""
     system_prompt, user_message = build_cv_prompt(analysis, profile, language)
+    if feedback:
+        user_message += "\n\n" + feedback
     cv_markdown = complete(
         client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS
     )

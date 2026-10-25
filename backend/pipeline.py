@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -8,6 +9,8 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.analyze import analyze_job
+from backend.errors import FactCheckError
+from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text
 from backend.humanize import humanize
 from backend.models import JobAnalysis
@@ -22,6 +25,7 @@ logger = logging.getLogger(__name__)
 
 TRACKER_FILENAME = "applications_tracker.xlsx"
 DRAFTS_DIRNAME = "_drafts"
+MAX_FACT_CHECK_RETRIES = 2
 
 
 @dataclass(frozen=True)
@@ -57,13 +61,42 @@ def run_pipeline(
     profile = load_profile(profile_dir)
 
     logger.info("Tailoring CV and cover letter for %s", analysis.company_name)
-    cv_markdown = tailor_cv(analysis, profile, client=client, model=model, language=language)
-    cv_markdown = humanize(cv_markdown, kind="cv", client=client, model=model)
-    cv_markdown = apply_position_headline(cv_markdown, analysis.job_title)
-    # After humanize, which rejects a candidate whose headings moved — including ours.
-    cv_markdown = move_skills_after_experience(cv_markdown)
-    cover_letter_markdown = tailor_letter(analysis, profile, client=client, model=model, language=language)
-    cover_letter_markdown = humanize(cover_letter_markdown, kind="cover_letter", client=client, model=model)
+    posting_terms = analysis.hard_skills + analysis.keywords
+    # Data the documents may quote that is not in the master CV, so its numbers are not findings.
+    allowed_text = "\n".join(
+        [profile.personal.as_contact_lines(), analysis.job_title or "", analysis.company_name or ""]
+    )
+    photo = load_photo_bytes(profile.personal.photo_path)
+
+    def draft_cv(feedback: str | None) -> str:
+        cv = tailor_cv(analysis, profile, client=client, model=model, language=language, feedback=feedback)
+        return humanize(cv, kind="cv", client=client, model=model)
+
+    def check_cv_facts(cv: str) -> list[str]:
+        return check_cv(
+            cv, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
+        )
+
+    def finish_cv(cv: str) -> str:
+        cv = apply_position_headline(cv, analysis.job_title)
+        # After humanize, which rejects a candidate whose headings moved — including ours.
+        return move_skills_after_experience(cv)
+
+    cv_markdown = finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV"))
+
+    def draft_letter(feedback: str | None) -> str:
+        letter = tailor_letter(
+            analysis, profile, client=client, model=model, language=language, feedback=feedback
+        )
+        return humanize(letter, kind="cover_letter", client=client, model=model)
+
+    def check_letter_facts(letter: str) -> list[str]:
+        return check_letter(
+            letter, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
+        )
+
+    cover_letter_markdown = _fact_checked(draft_letter, check_letter_facts, kind="cover letter")
+    logger.info("Cover letter body has %d words", len(cover_letter_markdown.split()))
     # After humanize, so the guard compares body against body and the letterhead stays verbatim.
     cover_letter_markdown = (
         build_letterhead(profile.personal, analysis, today=today, letter_body=cover_letter_markdown)
@@ -71,7 +104,6 @@ def run_pipeline(
     )
 
     logger.info("Rendering PDFs")
-    photo = load_photo_bytes(profile.personal.photo_path)
     cv_pdf = render_markdown_to_pdf(
         cv_markdown, css=CV_CSS, photo=photo, include_photo=include_photo, line_breaks=True
     )
@@ -110,3 +142,36 @@ def run_pipeline(
         tracker_path=tracker_path,
         tracker_row=tracker_row,
     )
+
+
+def _fact_checked(
+    draft: Callable[[str | None], str],
+    check: Callable[[str], list[str]],
+    *,
+    kind: str,
+) -> str:
+    """A draft that passes the fact check, or FactCheckError — never a draft that fails it.
+
+    Each failed attempt is retried with its findings attached, up to MAX_FACT_CHECK_RETRIES
+    times.
+    """
+    feedback: str | None = None
+    findings: list[str] = []
+    attempts = MAX_FACT_CHECK_RETRIES + 1
+    for attempt in range(1, attempts + 1):
+        text = draft(feedback)
+        findings = check(text)
+        if not findings:
+            if attempt > 1:
+                logger.info("The %s passed the fact check on attempt %d", kind, attempt)
+            return text
+        logger.warning(
+            "The %s failed the fact check on attempt %d of %d:\n- %s",
+            kind, attempt, attempts, "\n- ".join(findings),
+        )
+        feedback = fact_check_correction(findings)
+    raise FactCheckError(
+        f"The {kind} still states things the master CV does not back after {attempts} attempts, "
+        "so no documents were written:\n- " + "\n- ".join(findings)
+    )
+

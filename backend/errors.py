@@ -31,3 +31,7 @@ class TrackerError(TailorError):
 
 class ApplicationNotFoundError(TailorError):
     pass
+
+
+class FactCheckError(TailorError):
+    pass
