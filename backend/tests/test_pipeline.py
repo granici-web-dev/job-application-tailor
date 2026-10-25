@@ -346,3 +346,17 @@ def test_a_changed_sentence_fixed_on_the_retry_is_kept(tmp_path):
 
     letter = (result.company_dir / "_drafts" / "cover_letter.md").read_text(encoding="utf-8")
     assert "I work mostly in Python." in letter
+
+
+
+def test_the_summary_is_the_master_paragraph_and_never_reaches_humanize(tmp_path):
+    rewritten = SHORT_MASTER.replace("Backend engineer.", "Backend engineer shipping everything to production.")
+    client = _client_returning(rewritten, rewritten.replace("## Summary\nBackend engineer shipping everything to production.\n\n", ""), LETTER_JSON)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    humanize_request = _user_messages(client)[2]
+    assert "## Summary" not in humanize_request
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "## Summary\n\nBackend engineer.\n" in draft
+    assert "production" not in draft

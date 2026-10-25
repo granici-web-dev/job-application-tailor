@@ -28,6 +28,3 @@ Apply all of the above fully. Rework sentence structure freely to sound natural,
 
 ## When humanizing a CV
 Rephrase wording at the sentence and bullet level only. Do not change the document structure: keep the section headings exactly as written (same text, same language, for example Profil, Berufserfahrung, Kenntnisse, Ausbildung, Sprachen), keep every bullet point, and keep all bold. Do not reorder sections. Touch the prose inside bullets, never the skeleton around it.
-- Keep the summary (Profil) in the first person without the pronoun ("Verantworte …", "Entwickle …"). Never turn it into the passive voice or the third person.
-- Keep the sentence that states the scope of responsibility ("von der Anforderungsanalyse … bis zur Umsetzung im Code") as written. Never extend the range with a step it does not name, such as Deployment or Go-live.
-- A sentence that states years of experience names no tools, technologies, or methods. Do not move any into it.

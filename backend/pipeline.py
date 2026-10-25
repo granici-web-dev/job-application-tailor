@@ -17,7 +17,13 @@ from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
 from backend.page_limit import MAX_CV_PAGES, collapse_early_roles, trim_older_roles
 from backend.render_pdf import CV_CSS, render_markdown_to_pdf, render_markdown_with_page_count
-from backend.tailor_cv import apply_position_headline, move_skills_after_experience, tailor_cv
+from backend.tailor_cv import (
+    apply_position_headline,
+    move_skills_after_experience,
+    put_back_master_summary,
+    split_off_summary,
+    tailor_cv,
+)
 from backend.tailor_letter import (
     build_letterhead,
     changed_sentence_findings,
@@ -78,7 +84,11 @@ def run_pipeline(
 
     def draft_cv(feedback: str | None) -> str:
         cv = tailor_cv(analysis, profile, client=client, model=model, language=language, feedback=feedback)
-        return humanize(cv, kind="cv", client=client, model=model)
+        # The summary is the master CV's paragraph, untouched by humanize; the fact check
+        # still reads it, since it runs on the whole CV.
+        cv, summary = split_off_summary(cv)
+        cv = humanize(cv, kind="cv", client=client, model=model)
+        return put_back_master_summary(cv, summary, profile.master_cv_markdown)
 
     def check_cv_facts(cv: str) -> list[str]:
         return check_cv(

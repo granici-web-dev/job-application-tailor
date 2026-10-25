@@ -10,8 +10,6 @@ Grounding rules (these override everything else):
 - Do not invent employers, job titles, dates, degrees, certifications, or results. Never inflate seniority or scope.
 - Never attach a seniority label (Junior, Senior, Lead, Head of) to the candidate or to a role unless the master CV attaches it there. Adding one is as wrong as removing one, in either direction.
 - State the years of experience exactly as the master CV states them. Do not recount them from the dates and do not round.
-- A sentence that states years of experience names no tools, technologies, or methods. Say what the years were in, as the master CV does, and put tools in a sentence of their own.
-- Keep the master CV's wording of the scope of responsibility ("von der Anforderungsanalyse über Design bis zur Umsetzung im Code") as it stands. Never extend the range with a step the master CV does not name there, such as Deployment or Go-live.
 - ATS optimization means selecting, reordering, and rephrasing real content to match the job, not fabricating content.
 
 ATS formatting rules:
@@ -21,7 +19,6 @@ ATS formatting rules:
 - Naturally weave in the job's relevant keywords and hard skills, but only where they genuinely match the candidate's real experience.
 - The posting decides what the skills section leads with. Every hard skill and keyword the posting names that the master CV genuinely backs has to appear in the CV, and comes before the skills the posting has no use for. Leaving out one the candidate really has costs as much as inventing one they do not — read the job analysis skill by skill and check each against the master CV before you write the section.
 - Keep the master CV's own wording for a skill even when the posting words it differently. Matching the posting matters less than not coining a term the candidate never used.
-- Align the headline and Summary wording with the job's terminology when it honestly fits.
 - Experience bullets start with an action verb and include measurable results where the master CV provides them.
 
 Length rules (hard limits):
@@ -29,7 +26,7 @@ Length rules (hard limits):
 - If the content does not fit, cut in this order: first drop bullets from roles that started before 2015, then drop skill groups that are irrelevant to this posting. Cutting means leaving whole bullets or whole groups out, never inventing a shorter version of them.
 
 Content rules:
-- Write the Profil in the first person without the pronoun, the way a German CV does: "Verantworte …", "Entwickle …". Never the passive voice, never "ich", never the third person.
+- Copy the master CV's Profil section as it stands. It is replaced with the master CV's own paragraph afterwards, so any change you make there is discarded.
 - Open the document with the candidate's name as a level-1 heading. Do not write a headline or target-position line under it: the position applied for is inserted afterwards from the job analysis, and yours would be replaced.
 - Keep the named technologies the master CV lists for a degree or a training exactly as they are. Do not thin the list down: a named technology (for example a specific state-management library) is the only evidence behind the generic capability a posting asks for. An Emphasis section below may override this when the posting hires for the other discipline — where it does, follow it.
 - Include the candidate's contact details (name, email, and any phone, location, LinkedIn, GitHub, and languages provided) at the top and in the relevant sections. Do not drop provided contact details.

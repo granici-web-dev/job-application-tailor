@@ -26,6 +26,8 @@ EXPERIENCE_HEADING = re.compile(
     r"^##\s*(berufserfahrung|beruflicher werdegang|werdegang|experience|employment)", re.IGNORECASE
 )
 EDUCATION_HEADING = re.compile(r"^##\s*(ausbildung|education)", re.IGNORECASE)
+SUMMARY_HEADING = re.compile(r"^##\s*(profil|kurzprofil|summary|profile)\b", re.IGNORECASE)
+SEPARATOR = re.compile(r"^\s*(---+)?\s*$")
 
 
 def tailor_cv(
@@ -175,6 +177,62 @@ def move_education_before_experience(cv_markdown: str) -> str:
     blocks.insert(experience, blocks.pop(education))
 
     rebuilt = "\n".join(preamble + [line for block in blocks for line in block])
+    return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def split_off_summary(cv_markdown: str) -> tuple[str, list[str] | None]:
+    """The CV without its summary section, and that section's lines (None if it has none).
+
+    The summary is not the model's to write: it is the candidate's own paragraph from the
+    master CV, so it is taken out before humanize and put back afterwards by
+    put_back_master_summary.
+    """
+    sections = _level_two_sections(cv_markdown)
+    summary = next((i for i, (head, _) in enumerate(sections) if SUMMARY_HEADING.match(head)), None)
+    if summary is None:
+        return cv_markdown, None
+    lines = cv_markdown.splitlines()
+    start, end = sections[summary][1]
+    rest = "\n".join(lines[:start] + lines[end:])
+    return (rest + "\n" if cv_markdown.endswith("\n") else rest), lines[start:end]
+
+
+def put_back_master_summary(
+    cv_markdown: str, removed: list[str] | None, master_markdown: str
+) -> str:
+    """The CV with the master CV's summary paragraph, word for word, as its first section.
+
+    The heading and the separator after it are the ones the tailored CV used, so the section
+    reads in the CV's language and keeps its rule; only the paragraph is the master's.
+    """
+    master_lines = master_markdown.splitlines()
+    master_sections = _level_two_sections(master_markdown)
+    master_summary = next(
+        ((start, end) for head, (start, end) in master_sections if SUMMARY_HEADING.match(head)), None
+    )
+    if master_summary is None:
+        logger.warning("The master CV has no summary section; the CV goes out without one")
+        return cv_markdown
+    start, end = master_summary
+    body = master_lines[start + 1 : end]
+    while body and SEPARATOR.match(body[0]):
+        body.pop(0)
+    while body and SEPARATOR.match(body[-1]):
+        body.pop()
+
+    heading = removed[0] if removed else master_lines[start]
+    trailing: list[str] = []
+    if removed:
+        tail = removed[1:]
+        while tail and SEPARATOR.match(tail[-1]):
+            trailing.insert(0, tail.pop())
+        while trailing and not trailing[0].strip():
+            trailing.pop(0)
+    block = [heading, "", *body, "", *trailing]
+
+    lines = cv_markdown.splitlines()
+    first = next((i for i, line in enumerate(lines) if SECTION_HEADING.match(line)), len(lines))
+    rebuilt = "\n".join(lines[:first] + block + lines[first:])
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
 
 
