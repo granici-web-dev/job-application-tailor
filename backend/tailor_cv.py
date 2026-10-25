@@ -25,6 +25,7 @@ SECTION_HEADING = re.compile(r"^##\s+\S")
 EXPERIENCE_HEADING = re.compile(
     r"^##\s*(berufserfahrung|beruflicher werdegang|werdegang|experience|employment)", re.IGNORECASE
 )
+EDUCATION_HEADING = re.compile(r"^##\s*(ausbildung|education)", re.IGNORECASE)
 
 
 def tailor_cv(
@@ -138,6 +139,36 @@ def move_skills_after_experience(cv_markdown: str) -> str:
     blocks = [lines[start:end] for _, (start, end) in sections]
     moved = blocks.pop(skills)
     blocks.insert(experience, moved)  # experience shifted down one by the pop
+
+    rebuilt = "\n".join(preamble + [line for block in blocks for line in block])
+    return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def move_education_before_experience(cv_markdown: str) -> str:
+    """Put the education section above the experience section.
+
+    For a development posting the completed retraining is the candidate's only formal
+    qualification in the craft being hired for, and the experience above it belongs to the
+    other track. A reader who meets twelve years of design first reads the summary's claim
+    as contradicted by the document under it.
+
+    Enforced here for the same reason the skills move is: the heading order in the prompt is
+    a list of names to the model, not a sequence.
+    """
+    sections = _level_two_sections(cv_markdown)
+    education = next(
+        (i for i, (head, _) in enumerate(sections) if EDUCATION_HEADING.match(head)), None
+    )
+    experience = next(
+        (i for i, (head, _) in enumerate(sections) if EXPERIENCE_HEADING.match(head)), None
+    )
+    if education is None or experience is None or education < experience:
+        return cv_markdown
+
+    lines = cv_markdown.splitlines()
+    preamble = lines[: sections[0][1][0]]
+    blocks = [lines[start:end] for _, (start, end) in sections]
+    blocks.insert(experience, blocks.pop(education))
 
     rebuilt = "\n".join(preamble + [line for block in blocks for line in block])
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt

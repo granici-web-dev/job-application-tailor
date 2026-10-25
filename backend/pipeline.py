@@ -13,7 +13,12 @@ from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
 from backend.render_pdf import CV_CSS, render_markdown_to_pdf
-from backend.tailor_cv import apply_position_headline, move_skills_after_experience, tailor_cv
+from backend.tailor_cv import (
+    apply_position_headline,
+    move_education_before_experience,
+    move_skills_after_experience,
+    tailor_cv,
+)
 from backend.tailor_letter import build_letterhead, tailor_letter
 from backend.tracker import append_application
 from backend.utils import cover_letter_filename, cv_filename, resolve_unique_company_dir
@@ -62,6 +67,8 @@ def run_pipeline(
     cv_markdown = apply_position_headline(cv_markdown, analysis.job_title)
     # After humanize, which rejects a candidate whose headings moved — including ours.
     cv_markdown = move_skills_after_experience(cv_markdown)
+    if analysis.discipline == "engineering":
+        cv_markdown = move_education_before_experience(cv_markdown)
     cover_letter_markdown = tailor_letter(analysis, profile, client=client, model=model, language=language)
     cover_letter_markdown = humanize(cover_letter_markdown, kind="cover_letter", client=client, model=model)
     # After humanize, so the guard compares body against body and the letterhead stays verbatim.
