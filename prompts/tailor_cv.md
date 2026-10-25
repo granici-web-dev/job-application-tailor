@@ -13,7 +13,7 @@ Grounding rules (these override everything else):
 - ATS optimization means selecting, reordering, and rephrasing real content to match the job, not fabricating content.
 
 ATS formatting rules:
-- Use standard section headings, written in the language of the job posting. For a German posting use Profil, Berufserfahrung, Kenntnisse, Ausbildung, Sprachen; for an English posting use Summary, Experience, Skills, Education, Languages. Match the posting's language, do not mix languages.
+- Use standard section headings, written in the language of the job posting. For a German posting use Profil, Berufserfahrung, Projekte, Kenntnisse, Ausbildung, Sprachen; for an English posting use Summary, Experience, Projects, Skills, Education, Languages. Match the posting's language, do not mix languages.
 - That list is also the order the sections go in. The skills section comes after the experience section, never before it.
 - Single column. No tables, no multi-column layout, no graphics, no icons, no text boxes, no content in headers or footers.
 - Naturally weave in the job's relevant keywords and hard skills, but only where they genuinely match the candidate's real experience.
@@ -21,6 +21,10 @@ ATS formatting rules:
 - Keep the master CV's own wording for a skill even when the posting words it differently. Matching the posting matters less than not coining a term the candidate never used.
 - Align the headline and Summary wording with the job's terminology when it honestly fits.
 - Experience bullets start with an action verb and include measurable results where the master CV provides them.
+
+Length rules (hard limits):
+- The CV must fit on at most 2 A4 pages once rendered to PDF. Treat this as a limit, not a target.
+- If the content does not fit, cut in this order: first drop bullets from roles that started before 2015, then drop skill groups that are irrelevant to this posting. Cutting means leaving whole bullets or whole groups out, never inventing a shorter version of them.
 
 Content rules:
 - Open the document with the candidate's name as a level-1 heading. Do not write a headline or target-position line under it: the position applied for is inserted afterwards from the job analysis, and yours would be replaced.

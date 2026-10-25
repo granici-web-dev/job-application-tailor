@@ -203,6 +203,12 @@ _2021 – heute_
 - Built REST services in Python with FastAPI
 """
 
+def _long_role(title, dates, count):
+    return f"\n### {title}\n\n_{dates}_\n\n" + "\n".join(
+        f"- Wartung von Altsystem Nummer {number}" for number in range(1, count + 1)
+    ) + "\n"
+
+
 def _profile_dir_with_master(tmp_path, master):
     profile_dir = tmp_path / "profile"
     profile_dir.mkdir()
@@ -268,3 +274,35 @@ def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_p
         _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
     assert not (tmp_path / "out").exists()
+
+
+def test_a_cv_over_two_pages_collapses_the_early_roles_without_asking_the_model(tmp_path):
+    master = SHORT_MASTER + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 150)
+    client = _client_returning(master, master, LETTER_MARKDOWN, LETTER_MARKDOWN)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
+
+    assert client.messages.create.call_count == 5
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "### Junior Developer — Oldtech AG, Riga (2010 – 2014)" in draft
+    assert "Altsystem" not in draft
+    assert "- Built REST services in Python with FastAPI" in draft
+    assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) <= 2
+
+
+def test_a_cv_still_too_long_trims_the_roles_before_2020_to_two_bullets(tmp_path):
+    master = (
+        SHORT_MASTER
+        + _long_role("Developer — Midtech AG, Riga", "2017 – 2020", 150)
+        + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 3)
+    )
+    client = _client_returning(master, master, LETTER_MARKDOWN, LETTER_MARKDOWN)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
+
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "### Junior Developer — Oldtech AG, Riga (2010 – 2014)" in draft
+    assert "- Wartung von Altsystem Nummer 2\n" in draft
+    assert "Nummer 3\n" not in draft
+    assert "- Built REST services in Python with FastAPI" in draft
+    assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) <= 2

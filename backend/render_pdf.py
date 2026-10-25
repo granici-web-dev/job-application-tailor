@@ -95,6 +95,20 @@ def render_markdown_to_pdf(
     include_photo: bool = True,
     line_breaks: bool = False,
 ) -> bytes:
+    return render_markdown_with_page_count(
+        markdown_text, css=css, photo=photo, include_photo=include_photo, line_breaks=line_breaks
+    )[0]
+
+
+def render_markdown_with_page_count(
+    markdown_text: str,
+    *,
+    css: str = LETTER_CSS,
+    photo: bytes | None = None,
+    include_photo: bool = True,
+    line_breaks: bool = False,
+) -> tuple[bytes, int]:
+    """The PDF and its page count, from one layout pass."""
     # The CV header and the skills block put each entry on its own line; without nl2br
     # Markdown folds them into one run-on paragraph and the separators disappear.
     extensions = ["extra", "nl2br"] if line_breaks else ["extra"]
@@ -102,7 +116,8 @@ def render_markdown_to_pdf(
     if photo is not None and include_photo:
         body_html = f'<img class="cv-photo" src="{_image_data_uri(photo)}" alt="">' + body_html
     document_html = HTML_DOCUMENT.format(css=css, body=body_html)
-    return HTML(string=document_html).write_pdf()
+    document = HTML(string=document_html).render()
+    return document.write_pdf(), len(document.pages)
 
 
 def _image_data_uri(photo: bytes) -> str:
