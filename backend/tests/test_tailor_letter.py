@@ -274,3 +274,14 @@ def test_tailor_letter_assembles_the_model_parts_around_the_template():
 def test_tailor_letter_rejects_an_answer_that_is_not_the_three_parts():
     with pytest.raises(LLMError):
         tailor_letter(_analysis(), _profile(), client=_client("Sehr geehrte Damen und Herren, ..."), model="m")
+
+
+def test_a_template_without_the_company_placeholder_needs_none():
+    template_text = TEMPLATE.replace("bei [UNTERNEHMEN]", "in Ihr Team")
+    template = parse_letter_template(template_text)
+    letter = assemble_letter(
+        template, _analysis(), salutation="Sehr geehrte Damen und Herren,", intro="Einleitung.", adjusted=CORLAB
+    )
+
+    assert "Ich bringe mich gerne langfristig in Ihr Team ein." in letter
+    assert template_findings(letter, template, _analysis()) == []
