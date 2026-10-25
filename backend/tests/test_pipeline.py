@@ -152,3 +152,33 @@ def test_run_pipeline_without_photo_file_succeeds(tmp_path):
 
     assert result.cv_pdf_path.read_bytes().startswith(b"%PDF")
     assert _images(result.cv_pdf_path) == []
+
+
+def test_education_stays_below_experience_on_an_engineering_posting(tmp_path):
+    analysis = json.dumps({**json.loads(ANALYSIS_JSON), "discipline": "engineering"})
+    cv = (
+        "# Ivan Petrov\n\n## Profil\nBackend Engineer.\n\n"
+        "## Berufserfahrung\n- Python, FastAPI\n\n## Ausbildung\n- Weiterbildung\n"
+    )
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(analysis),
+        _message(cv),
+        _message(cv),
+        _message(LETTER_MARKDOWN),
+        _message(LETTER_MARKDOWN),
+    ]
+
+    result = run_pipeline(
+        job_url="https://example.com/jobs/1",
+        job_text="Senior Backend Engineer at Acme GmbH.",
+        output_dir=tmp_path,
+        profile_dir=PROFILE_DIR,
+        client=client,
+        model="claude-sonnet-4-6",
+        language=None,
+        today=date(2026, 6, 1),
+    )
+
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert draft.index("## Berufserfahrung") < draft.index("## Ausbildung")
