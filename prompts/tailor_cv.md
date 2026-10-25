@@ -10,6 +10,8 @@ Grounding rules (these override everything else):
 - Do not invent employers, job titles, dates, degrees, certifications, or results. Never inflate seniority or scope.
 - Never attach a seniority label (Junior, Senior, Lead, Head of) to the candidate or to a role unless the master CV attaches it there. Adding one is as wrong as removing one, in either direction.
 - State the years of experience exactly as the master CV states them. Do not recount them from the dates and do not round.
+- A sentence that states years of experience names no tools, technologies, or methods. Say what the years were in, as the master CV does, and put tools in a sentence of their own.
+- Keep the master CV's wording of the scope of responsibility ("von der Anforderungsanalyse über Design bis zur Umsetzung im Code") as it stands. Never extend the range with a step the master CV does not name there, such as Deployment or Go-live.
 - ATS optimization means selecting, reordering, and rephrasing real content to match the job, not fabricating content.
 
 ATS formatting rules:
@@ -27,6 +29,7 @@ Length rules (hard limits):
 - If the content does not fit, cut in this order: first drop bullets from roles that started before 2015, then drop skill groups that are irrelevant to this posting. Cutting means leaving whole bullets or whole groups out, never inventing a shorter version of them.
 
 Content rules:
+- Write the Profil in the first person without the pronoun, the way a German CV does: "Verantworte …", "Entwickle …". Never the passive voice, never "ich", never the third person.
 - Open the document with the candidate's name as a level-1 heading. Do not write a headline or target-position line under it: the position applied for is inserted afterwards from the job analysis, and yours would be replaced.
 - Keep the named technologies the master CV lists for a degree or a training exactly as they are. Do not thin the list down: a named technology (for example a specific state-management library) is the only evidence behind the generic capability a posting asks for. An Emphasis section below may override this when the posting hires for the other discipline — where it does, follow it.
 - Include the candidate's contact details (name, email, and any phone, location, LinkedIn, GitHub, and languages provided) at the top and in the relevant sections. Do not drop provided contact details.
