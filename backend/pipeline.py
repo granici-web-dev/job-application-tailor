@@ -20,7 +20,9 @@ from backend.render_pdf import CV_CSS, render_markdown_to_pdf, render_markdown_w
 from backend.tailor_cv import apply_position_headline, move_skills_after_experience, tailor_cv
 from backend.tailor_letter import (
     build_letterhead,
+    changed_sentence_findings,
     parse_letter_template,
+    restore_template_paragraph,
     tailor_letter,
     template_findings,
 )
@@ -100,11 +102,24 @@ def run_pipeline(
     # own template, which a rewrite could only move away from.
     letter_template = parse_letter_template(profile.cover_letter_template)
 
+    sentence_misses = 0
+
     def draft_letter(feedback: str | None) -> str:
-        return tailor_letter(analysis, profile, client=client, model=model, feedback=feedback)
+        nonlocal sentence_misses
+        letter = tailor_letter(analysis, profile, client=client, model=model, feedback=feedback)
+        if changed_sentence_findings(letter, letter_template, analysis):
+            sentence_misses += 1
+            # One retry for the changed sentence; after that the template's own paragraph
+            # stands in for it rather than failing a letter whose only fault is style.
+            if sentence_misses > 1:
+                logger.warning("The changed CorLab sentence missed its limits twice; using the template paragraph")
+                letter = restore_template_paragraph(letter, letter_template, analysis)
+        return letter
 
     def check_letter_body(letter: str) -> list[str]:
-        return template_findings(letter, letter_template, analysis) + check_letter(
+        return template_findings(letter, letter_template, analysis) + changed_sentence_findings(
+            letter, letter_template, analysis
+        ) + check_letter(
             letter, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
         )
 

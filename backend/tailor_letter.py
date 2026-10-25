@@ -20,6 +20,9 @@ MAX_TOKENS = 1500
 MAX_LETTER_WORDS = 300
 # At most this many sentences of the adjustable paragraph may differ from the template.
 MAX_CHANGED_SENTENCES = 1
+MAX_CHANGED_SENTENCE_WORDS = 30
+# A dash between spaces sets off an insertion; a hyphen inside a compound ("WCAG-Audit") does not.
+INSERTION_DASH = re.compile(r"\s[–—-]\s")
 
 GERMAN_MONTHS = (
     "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -159,6 +162,41 @@ def template_findings(letter: str, template: LetterTemplate, analysis: JobAnalys
             "paragraph, or drop the sentence you added."
         )
     return findings
+
+
+def changed_sentence_findings(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> list[str]:
+    """Where the sentence the model changed in the adjustable paragraph is too long or interrupted.
+
+    Kept apart from template_findings because a miss here has a safe way out: the template's
+    own paragraph, which the pipeline falls back to instead of failing the letter.
+    """
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
+    if len(paragraphs) < 3:
+        return []
+    template_sentences = {_squashed(s) for s in _sentences(fill_placeholders(template.adjustable, analysis))}
+    findings: list[str] = []
+    for sentence in _sentences(paragraphs[2]):
+        if _squashed(sentence) in template_sentences:
+            continue
+        words = len(sentence.split())
+        if words > MAX_CHANGED_SENTENCE_WORDS:
+            findings.append(
+                f"The sentence you changed in the paragraph starting '{_start(template.adjustable)}' "
+                f"has {words} words; the limit is {MAX_CHANGED_SENTENCE_WORDS}."
+            )
+        if INSERTION_DASH.search(sentence):
+            findings.append(
+                f"The sentence you changed in the paragraph starting '{_start(template.adjustable)}' "
+                "sets off an insertion with a dash. Write it without one."
+            )
+    return findings
+
+
+def restore_template_paragraph(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> str:
+    """The letter with the adjustable paragraph put back exactly as the template has it."""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
+    paragraphs[2] = fill_placeholders(template.adjustable, analysis)
+    return "\n\n".join(paragraphs)
 
 
 def _sentences(paragraph: str) -> list[str]:

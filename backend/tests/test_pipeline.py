@@ -315,3 +315,34 @@ def test_a_cv_still_too_long_trims_the_roles_before_2020_to_two_bullets(tmp_path
     assert "Nummer 3\n" not in draft
     assert "- Built REST services in Python with FastAPI" in draft
     assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) <= 2
+
+
+
+def _letter_with_corlab_sentence(sentence):
+    parts = json.loads(LETTER_JSON)
+    parts["adjusted_paragraph"] += " " + sentence
+    return json.dumps(parts)
+
+
+def test_a_changed_sentence_that_misses_its_limits_twice_falls_back_to_the_template(tmp_path):
+    dashed = _letter_with_corlab_sentence("I work – mostly – in Python.")
+    client = _client_returning(SHORT_MASTER, SHORT_MASTER, dashed, dashed)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    letter = (result.company_dir / "_drafts" / "cover_letter.md").read_text(encoding="utf-8")
+    assert "mostly" not in letter
+    assert "I also design PostgreSQL schemas.\n\nBefore that" in letter
+    assert client.messages.create.call_count == 5
+    assert "sets off an insertion with a dash" in _user_messages(client)[4]
+
+
+def test_a_changed_sentence_fixed_on_the_retry_is_kept(tmp_path):
+    dashed = _letter_with_corlab_sentence("I work – mostly – in Python.")
+    fixed = _letter_with_corlab_sentence("I work mostly in Python.")
+    client = _client_returning(SHORT_MASTER, SHORT_MASTER, dashed, fixed)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    letter = (result.company_dir / "_drafts" / "cover_letter.md").read_text(encoding="utf-8")
+    assert "I work mostly in Python." in letter

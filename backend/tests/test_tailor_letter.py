@@ -11,7 +11,9 @@ from backend.profile import PersonalInfo, Profile
 from backend.tailor_letter import (
     assemble_letter,
     build_letterhead,
+    changed_sentence_findings,
     parse_letter_template,
+    restore_template_paragraph,
     tailor_letter,
     template_findings,
 )
@@ -285,3 +287,52 @@ def test_a_template_without_the_company_placeholder_needs_none():
 
     assert "Ich bringe mich gerne langfristig in Ihr Team ein." in letter
     assert template_findings(letter, template, _analysis()) == []
+
+
+
+def _sentence_findings(adjusted):
+    return changed_sentence_findings(_letter(adjusted=adjusted), parse_letter_template(TEMPLATE), _analysis())
+
+
+def test_a_short_changed_sentence_without_a_dash_passes():
+    assert _sentence_findings(CORLAB + " Dabei arbeite ich durchgängig mit Claude Code.") == []
+
+
+def test_the_template_paragraph_itself_passes_even_with_its_own_dashes():
+    template = TEMPLATE.replace("Ein zweites System habe ich auditiert.", "Ein zweites System – bestehend – habe ich auditiert.")
+    corlab = CORLAB.replace("Ein zweites System habe ich auditiert.", "Ein zweites System – bestehend – habe ich auditiert.")
+    letter = assemble_letter(
+        parse_letter_template(template), _analysis(), salutation="Hallo,", intro="Einleitung.", adjusted=corlab
+    )
+
+    assert changed_sentence_findings(letter, parse_letter_template(template), _analysis()) == []
+
+
+def test_a_changed_sentence_over_30_words_is_caught():
+    long_sentence = "Dabei " + "arbeite " * 30 + "ich."
+
+    findings = _sentence_findings(CORLAB + " " + long_sentence)
+
+    assert findings == [
+        "The sentence you changed in the paragraph starting 'Aktuell verantworte ich bei CorLab Projekte …' "
+        "has 32 words; the limit is 30."
+    ]
+
+
+def test_a_changed_sentence_with_a_dash_insertion_is_caught():
+    findings = _sentence_findings(CORLAB + " Dabei arbeite ich – durchgängig – mit Claude Code.")
+
+    assert len(findings) == 1
+    assert "sets off an insertion with a dash" in findings[0]
+
+
+def test_a_hyphen_inside_a_compound_is_not_a_dash():
+    assert _sentence_findings(CORLAB + " Dabei führe ich den WCAG-2.2-AA-Audit durch.") == []
+
+
+def test_the_template_paragraph_can_be_put_back():
+    letter = _letter(adjusted=CORLAB + " Dabei arbeite ich – durchgängig – mit Claude Code.")
+
+    restored = restore_template_paragraph(letter, parse_letter_template(TEMPLATE), _analysis())
+
+    assert restored == _letter()
