@@ -10,7 +10,10 @@ The three parts:
 
 Grounding rules (these override everything else):
 - Use only facts the master CV states. A sentence you change or add in adjusted_paragraph may only use facts the master CV lists under that same position — and, where the master CV splits the position into projects under bold subheadings, under the same project.
-- In the intro and in the sentence you change in adjusted_paragraph, the only words you may take from the posting are its job title and its company name, written as the job analysis gives them, and terms that appear word for word in the master CV. Every other term from the posting stays out, even if the job explicitly asks for it. When the master CV has no word for what the posting names, use the master CV's own wording, never a synonym from the posting (write "Accessibility (WCAG 2.2 AA)" if that is what the master CV says, not "Barrierefreiheit").
+- In the intro and in the sentence you change in adjusted_paragraph, the only words you may take from the posting are its job title and its company name, written as the job analysis gives them, and terms that appear word for word in the master CV. Every other term from the posting stays out, even if the job explicitly asks for it. Any skill, technology or method you name there is worded exactly as in "Terms you may use", the only source of such wording. When the posting names something in its own words, use the master CV's wording for it, never the posting's synonym:
+  - "Barrierefreiheit" → "Accessibility (WCAG 2.2 AA)"
+  - "rollenbasierte Anwendungen" → "rollenbasierte Verwaltungssysteme"
+  - "UX-Audits" → "UX/UI-Audits"
 - A project from the master CV's Projekte section is the candidate's own work, not work for an employer. Never connect it to CorLab or to any other position.
 - Tense follows the master CV: everything that has an end date there, or is marked abgeschlossen, is written in the past tense only. Only what the master CV marks as ongoing (heute) may be in the present tense.
 - Never word anything so that it implies the work was handed over to other developers, for example "Übergabe an die Entwicklung" or "für das Entwicklungsteam". The only exception is a position where the master CV itself says outright that the result went to another team.

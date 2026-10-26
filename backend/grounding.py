@@ -61,6 +61,15 @@ def missing_required_skills(
     return missing
 
 
+def skill_wording(cv_markdown: str) -> list[str]:
+    """The skills section's lines as plain text, category labels and parentheses kept.
+
+    Kept whole rather than split into items: "Accessibility (WCAG 2.2 AA)" is the wording to
+    reuse, and splitting would hand back "Accessibility" and "WCAG 2.2 AA" apart.
+    """
+    return [LIST_MARKER.sub("", line).replace("**", "").strip() for line in _skills_section_lines(cv_markdown)]
+
+
 def _skill_items(cv_markdown: str) -> list[str]:
     items: list[str] = []
     for line in _skills_section_lines(cv_markdown):

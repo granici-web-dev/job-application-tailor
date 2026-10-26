@@ -1,4 +1,4 @@
-from backend.grounding import missing_required_skills, unsupported_skills
+from backend.grounding import missing_required_skills, skill_wording, unsupported_skills
 
 MASTER = """# Serghei Granici
 
@@ -124,3 +124,17 @@ def test_splits_a_group_laid_out_with_bullets():
     cv = _cv("**Frontend:** React • TypeScript • HTML")
 
     assert unsupported_skills(cv, MASTER) == []
+
+
+def test_skill_wording_keeps_labels_and_parentheses_whole():
+    master = (
+        "## Kenntnisse und Fähigkeiten\n\n"
+        "- **Frontend:** HTML, React\n"
+        "- **Qualität:** UX/UI-Audits, Accessibility (WCAG 2.2 AA)\n\n"
+        "## Berufserfahrung\n\n- Redesign\n"
+    )
+
+    assert skill_wording(master) == [
+        "Frontend: HTML, React",
+        "Qualität: UX/UI-Audits, Accessibility (WCAG 2.2 AA)",
+    ]

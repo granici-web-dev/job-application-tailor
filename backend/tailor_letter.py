@@ -11,6 +11,7 @@ from anthropic import Anthropic
 
 from backend.analyze import _strip_json_fences
 from backend.errors import LLMError, ProfileError
+from backend.grounding import skill_wording
 from backend.llm import complete
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
@@ -281,6 +282,9 @@ def build_letter_prompt(
             + "\n\n".join(fixed),
             f"## Word budget\nThe salutation, the opening and the adjusted paragraph together may "
             f"use at most {budget} words.",
+            "## Terms you may use (the only wording for skills, technologies and methods in the "
+            "intro and the changed sentence)\n"
+            + "\n".join(f"- {line}" for line in skill_wording(profile.master_cv_markdown)),
             "## Candidate master CV (the only source of facts)\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
         ]

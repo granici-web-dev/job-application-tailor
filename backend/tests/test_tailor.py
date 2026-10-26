@@ -132,6 +132,8 @@ def test_letter_prompt_carries_no_fabrication_rule_and_template():
     )
 
     assert "appear word for word in the master CV" in system_prompt
+    assert "## Terms you may use" in user_message
+    assert "- Python, FastAPI, PostgreSQL, Docker" in user_message
     assert "At DataForge I build APIs." in user_message
     assert "Available now for Acme GmbH." in user_message
     assert "Acme GmbH" in user_message
