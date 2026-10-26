@@ -1,4 +1,6 @@
-from backend.tailor_cv import put_back_master_summary, split_off_summary
+import pytest
+
+from backend.tailor_cv import put_back_master_summary, split_off_summary, with_summary_variant
 
 MASTER = """# Serghei Granici
 
@@ -78,3 +80,56 @@ def test_a_master_cv_without_a_summary_leaves_the_cv_without_one():
     rest, removed = split_off_summary(CV)
 
     assert put_back_master_summary(rest, removed, MASTER.replace("## Profil", "## Über mich")) == rest
+
+
+VARIANT_MASTER = """# Serghei Granici
+
+## Profil
+
+### Profil (engineering)
+
+Fullstack-Entwickler mit über 10 Jahren Erfahrung im UI/UX-Design.
+
+### Profil (design)
+
+Senior UI/UX Designer mit über 10 Jahren Erfahrung.
+
+### Profil (analysis)
+
+UI/UX- und Produktexperte mit über 10 Jahren Erfahrung.
+
+## Kenntnisse
+
+- React
+"""
+
+
+@pytest.mark.parametrize(
+    ("discipline", "paragraph"),
+    [
+        ("engineering", "Fullstack-Entwickler"),
+        ("design", "Senior UI/UX Designer"),
+        ("analysis", "UI/UX- und Produktexperte"),
+        ("unknown", "Fullstack-Entwickler"),
+    ],
+)
+def test_the_master_cv_keeps_only_the_summary_variant_of_the_discipline(discipline, paragraph):
+    master = with_summary_variant(VARIANT_MASTER, discipline)
+
+    assert f"## Profil\n\n{paragraph}" in master
+    assert "###" not in master
+    assert master.count("über 10 Jahren") == 1
+    assert master.endswith("## Kenntnisse\n\n- React\n")
+
+
+def test_the_put_back_summary_is_the_chosen_variant_under_a_plain_heading():
+    master = with_summary_variant(VARIANT_MASTER, "design")
+
+    result = put_back_master_summary(*split_off_summary(CV), master)
+
+    assert "## Profil\n\nSenior UI/UX Designer mit über 10 Jahren Erfahrung.\n" in result
+    assert "(design)" not in result
+
+
+def test_a_master_cv_without_variants_is_left_as_it_is():
+    assert with_summary_variant(MASTER, "design") == MASTER

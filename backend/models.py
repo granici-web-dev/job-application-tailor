@@ -5,7 +5,7 @@ from dataclasses import asdict, dataclass
 from backend.errors import JobAnalysisError
 
 EMPLOYMENT_TYPES = frozenset({"remote", "onsite", "hybrid", "unknown"})
-DISCIPLINES = frozenset({"design", "engineering", "unknown"})
+DISCIPLINES = frozenset({"design", "engineering", "analysis", "unknown"})
 
 
 @dataclass(frozen=True)

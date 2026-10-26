@@ -22,6 +22,12 @@ def test_job_analysis_keeps_a_known_discipline():
     assert analysis.discipline == "design"
 
 
+def test_job_analysis_keeps_the_analysis_discipline():
+    analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="analysis"))
+
+    assert analysis.discipline == "analysis"
+
+
 def test_job_analysis_defaults_unknown_discipline():
     analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="ui-ish"))
 

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date
 from pathlib import Path
 
@@ -22,7 +22,9 @@ from backend.tailor_cv import (
     move_skills_after_experience,
     put_back_master_summary,
     split_off_summary,
+    summary_variant,
     tailor_cv,
+    with_summary_variant,
 )
 from backend.tailor_letter import (
     build_letterhead,
@@ -73,6 +75,10 @@ def run_pipeline(
 
     logger.info("Loading profile from %s", profile_dir)
     profile = load_profile(profile_dir)
+    logger.info("Using the '%s' summary for discipline '%s'", summary_variant(analysis.discipline), analysis.discipline)
+    profile = replace(
+        profile, master_cv_markdown=with_summary_variant(profile.master_cv_markdown, analysis.discipline)
+    )
 
     logger.info("Tailoring CV and cover letter for %s", analysis.company_name)
     posting_terms = analysis.hard_skills + analysis.keywords

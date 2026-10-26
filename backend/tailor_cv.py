@@ -28,6 +28,11 @@ EXPERIENCE_HEADING = re.compile(
 EDUCATION_HEADING = re.compile(r"^##\s*(ausbildung|education)", re.IGNORECASE)
 SUMMARY_HEADING = re.compile(r"^##\s*(profil|kurzprofil|summary|profile)\b", re.IGNORECASE)
 SEPARATOR = re.compile(r"^\s*(---+)?\s*$")
+# A variant of the summary in the master CV: `### Profil (design)` under `## Profil`.
+SUMMARY_VARIANT = re.compile(r"^###\s+.*\((\w+)\)\s*$")
+# Which summary variant each discipline gets; an unclassified posting gets the engineering one.
+SUMMARY_VARIANT_BY_DISCIPLINE = {"engineering": "engineering", "design": "design", "analysis": "analysis"}
+DEFAULT_SUMMARY_VARIANT = "engineering"
 
 
 def tailor_cv(
@@ -178,6 +183,47 @@ def move_education_before_experience(cv_markdown: str) -> str:
 
     rebuilt = "\n".join(preamble + [line for block in blocks for line in block])
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def summary_variant(discipline: str) -> str:
+    return SUMMARY_VARIANT_BY_DISCIPLINE.get(discipline, DEFAULT_SUMMARY_VARIANT)
+
+
+def with_summary_variant(master_markdown: str, discipline: str) -> str:
+    """The master CV with its summary section reduced to the one variant this posting gets.
+
+    Everything downstream — the tailoring prompts, the fact check, the summary put back word
+    for word — reads this version, so none of it ever sees the other variants or their
+    headings. A master CV without variants comes back unchanged.
+    """
+    sections = _level_two_sections(master_markdown)
+    summary = next(((start, end) for head, (start, end) in sections if SUMMARY_HEADING.match(head)), None)
+    if summary is None:
+        return master_markdown
+    lines = master_markdown.splitlines()
+    start, end = summary
+    variants: dict[str, list[str]] = {}
+    current: list[str] | None = None
+    for line in lines[start + 1 : end]:
+        match = SUMMARY_VARIANT.match(line)
+        if match:
+            current = variants.setdefault(match.group(1).casefold(), [])
+        elif current is not None:
+            current.append(line)
+    if not variants:
+        return master_markdown
+
+    wanted = summary_variant(discipline)
+    body = variants.get(wanted)
+    if body is None:
+        logger.warning("The master CV has no '%s' summary variant; using the first one", wanted)
+        body = next(iter(variants.values()))
+    while body and not body[0].strip():
+        body = body[1:]
+    while body and not body[-1].strip():
+        body = body[:-1]
+    rebuilt = "\n".join(lines[: start + 1] + ["", *body, ""] + lines[end:])
+    return rebuilt + "\n" if master_markdown.endswith("\n") else rebuilt
 
 
 def split_off_summary(cv_markdown: str) -> tuple[str, list[str] | None]:
