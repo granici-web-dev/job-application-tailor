@@ -186,6 +186,59 @@ def test_a_posting_skill_the_master_cv_lacks_is_caught_anywhere():
     ]
 
 
+BA_TERMS = ["Business Analyst", "Digitale Plattformen", "Barrierefreiheit", "Services"]
+BA_NAMES = ["Business Analyst Digitale Plattformen (m/w/d)", "Kontor Plattform Services GmbH"]
+
+
+def test_posting_terms_inside_the_job_title_and_company_in_the_letter_pass():
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "mit großem Interesse habe ich Ihre Ausschreibung als Business Analyst Digitale "
+        "Plattformen (m/w/d) bei der Kontor Plattform Services GmbH gelesen.",
+    )
+
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == []
+
+
+def test_a_posting_term_outside_the_job_title_in_the_letter_is_still_caught():
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "mit großem Interesse habe ich Ihre Ausschreibung als Business Analyst Digitale "
+        "Plattformen gelesen. Barrierefreiheit liegt mir am Herzen.",
+    )
+
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == [
+        "'Barrierefreiheit' does not appear in the master CV."
+    ]
+
+
+def test_a_title_term_used_as_a_claim_outside_the_title_is_still_caught():
+    letter = LETTER.replace(
+        "Davor war ich über zehn Jahre im UI/UX-Design tätig",
+        "Davor war ich als Business Analyst und über zehn Jahre im UI/UX-Design tätig",
+    )
+
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == [
+        "'Business Analyst' does not appear in the master CV."
+    ]
+
+
+def test_a_job_title_is_also_recognised_by_its_core_before_the_qualifiers():
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "mit großem Interesse habe ich Ihre Ausschreibung als Software Engineer gelesen.",
+    )
+
+    findings = check_letter(
+        letter,
+        MASTER,
+        posting_terms=["Software Engineer", "Barrierefreiheit"],
+        posting_names=["Software Engineer (m/w/d) React / TypeScript", "Nordlicht Software GmbH"],
+    )
+
+    assert findings == []
+
+
 def test_an_entry_heading_the_master_cv_does_not_have_is_caught():
     cv = _cv(**{"### Webdesigner — StarSoft SRL, Chisinau": "### Webdesigner — Pixel GmbH, Chisinau"})
 

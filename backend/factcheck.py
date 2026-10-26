@@ -15,14 +15,17 @@ It checks three things:
 
 What counts as a technology or method is read from the master CV's own skills section, plus
 the posting's skills that the master CV does not back — those are the ones a model imports.
+A posting term that occurs only inside the posting's job title or company name is a quote of
+the posting, not an import: "Business Analyst" in "Ihre Ausschreibung als Business Analyst".
 """
 
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from backend.grounding import _is_supported, _normalize, _skill_items
+from backend.grounding import NON_WORD, _is_supported, _normalize, _skill_items
 
 SECTION = re.compile(r"^##\s+(.*)$")
 ENTRY = re.compile(r"^###\s+(.*)$")
@@ -34,6 +37,8 @@ EXPERIENCE_SECTION = re.compile(
 PROJECT_SECTION = re.compile(r"(projekte|projects)", re.IGNORECASE)
 SKILL_SECTION = re.compile(r"(kenntnis|f[äa]higkeit|skill|kompetenz|technical)", re.IGNORECASE)
 PARENTHETICAL = re.compile(r"\([^)]*\)")
+# Where a job title's core ends: "Frontend Developer (m/w/d) React / TypeScript".
+TITLE_CORE_END = re.compile(r"\(|\s[–—|-]\s")
 
 NUMBER = re.compile(r"(?<![\w.])\d+(?:[.,]\d+)*(?!\w)")
 DURATION = re.compile(r"(?<![\w.])(\d+)\+?\s*(?:jahre|jahren|years?)\b", re.IGNORECASE)
@@ -100,15 +105,22 @@ class _Master:
 
 
 def check_cv(
-    cv_markdown: str, master_markdown: str, *, posting_terms: list[str], allowed_text: str = ""
+    cv_markdown: str,
+    master_markdown: str,
+    *,
+    posting_terms: list[str],
+    allowed_text: str = "",
+    posting_names: Sequence[str] = (),
 ) -> list[str]:
     """Every statement in the CV the master CV does not back, as human-readable findings.
 
     `allowed_text` holds data the CV may quote that is not in the master CV — the contact
     details, the posting's title and company — so their numbers are not reported.
+    `posting_names` are the posting's job title and company name: a posting term inside one
+    of them is not reported.
     """
     master = _read_master(master_markdown)
-    findings = _Findings(master, posting_terms, allowed_text)
+    findings = _Findings(master, posting_terms, allowed_text, posting_names)
 
     for section, lines in _sections(cv_markdown):
         if SKILL_SECTION.search(section):
@@ -149,7 +161,12 @@ def _check_cv_entry(findings: _Findings, entry: _Entry, body: list[str]) -> None
 
 
 def check_letter(
-    letter_markdown: str, master_markdown: str, *, posting_terms: list[str], allowed_text: str = ""
+    letter_markdown: str,
+    master_markdown: str,
+    *,
+    posting_terms: list[str],
+    allowed_text: str = "",
+    posting_names: Sequence[str] = (),
 ) -> list[str]:
     """Every statement in the cover letter body the master CV does not back.
 
@@ -159,7 +176,7 @@ def check_letter(
     paragraph that names nothing is held to the master CV as a whole.
     """
     master = _read_master(master_markdown)
-    findings = _Findings(master, posting_terms, allowed_text)
+    findings = _Findings(master, posting_terms, allowed_text, posting_names)
 
     for paragraph in re.split(r"\n\s*\n", letter_markdown):
         findings.no_mixing(paragraph, what="one paragraph")
@@ -187,8 +204,11 @@ def check_letter(
 
 
 class _Findings:
-    def __init__(self, master: _Master, posting_terms: list[str], allowed_text: str) -> None:
+    def __init__(
+        self, master: _Master, posting_terms: list[str], allowed_text: str, posting_names: Sequence[str]
+    ) -> None:
         self.master = master
+        self.posting_names = _name_forms(posting_names)
         self.allowed_numbers = _numbers(allowed_text)
         master_spaced = _normalize(master.text)
         self.imported = [
@@ -228,8 +248,9 @@ class _Findings:
                     f"only under {self._where(lambda text: number in _numbers(text))}."
                 )
 
+        outside_names = _outside_names(text, self.posting_names)
         for term in self.imported:
-            if _occurs(term, text):
+            if any(_occurs(term, part) for part in outside_names):
                 self.add(f"'{term}' does not appear in the master CV.")
         misplaced: list[str] = []
         for term in self.master.terms:
@@ -439,6 +460,37 @@ def _occurs(term: str, text: str) -> bool:
             if "".join(tokens[start : start + span]) == squashed:
                 return True
     return False
+
+
+def _name_forms(names: Sequence[str]) -> list[list[str]]:
+    """Each name as tokens, longest first; a job title also by its core before any qualifier."""
+    forms: list[list[str]] = []
+    for name in names:
+        for form in (PARENTHETICAL.sub(" ", name), TITLE_CORE_END.split(name, 1)[0]):
+            tokens = _normalize(form).split()
+            if tokens and tokens not in forms:
+                forms.append(tokens)
+    return sorted(forms, key=len, reverse=True)
+
+
+def _outside_names(text: str, forms: list[list[str]]) -> list[str]:
+    """The text in the pieces left once every occurrence of a name is cut out.
+
+    Kept as pieces so that the words either side of a cut never join into a term.
+    """
+    words = [word for word in NON_WORD.sub(" ", text).split() if _normalize(word)]
+    tokens = [_normalize(word) for word in words]
+    pieces: list[list[str]] = [[]]
+    start = 0
+    while start < len(tokens):
+        form = next((f for f in forms if tokens[start : start + len(f)] == f), None)
+        if form:
+            pieces.append([])
+            start += len(form)
+        else:
+            pieces[-1].append(words[start])
+            start += 1
+    return [" ".join(piece) for piece in pieces if piece]
 
 
 def _numbers(text: str) -> set[str]:

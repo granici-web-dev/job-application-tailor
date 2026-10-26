@@ -86,6 +86,8 @@ def run_pipeline(
     allowed_text = "\n".join(
         [profile.personal.as_contact_lines(), analysis.job_title or "", analysis.company_name or ""]
     )
+    # A posting term inside these is the posting quoted, not a skill claimed.
+    posting_names = [analysis.job_title or "", analysis.company_name or ""]
     photo = load_photo_bytes(profile.personal.photo_path)
 
     def draft_cv(feedback: str | None) -> str:
@@ -98,7 +100,11 @@ def run_pipeline(
 
     def check_cv_facts(cv: str) -> list[str]:
         return check_cv(
-            cv, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
+            cv,
+            profile.master_cv_markdown,
+            posting_terms=posting_terms,
+            allowed_text=allowed_text,
+            posting_names=posting_names,
         )
 
     def finish_cv(cv: str) -> str:
@@ -136,7 +142,11 @@ def run_pipeline(
         return template_findings(letter, letter_template, analysis) + changed_sentence_findings(
             letter, letter_template, analysis
         ) + check_letter(
-            letter, profile.master_cv_markdown, posting_terms=posting_terms, allowed_text=allowed_text
+            letter,
+            profile.master_cv_markdown,
+            posting_terms=posting_terms,
+            allowed_text=allowed_text,
+            posting_names=posting_names,
         )
 
     cover_letter_markdown = _fact_checked(draft_letter, check_letter_body, kind="cover letter")
