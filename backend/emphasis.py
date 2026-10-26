@@ -32,9 +32,6 @@ _CV_RULES = _SHARED_RULES + (
 _CV_INSTRUCTIONS = {
     "design": (
         "This posting hires for design, so the CV has to read design-first.\n"
-        "- Open the summary with the design track record: UI/UX and product design, the years "
-        "behind it, and the scope of it. Development and AI-supported work follow afterwards as "
-        "supporting range, never as the lead.\n"
         "- Group the skills section under category labels, in this order: UI/UX design, usability "
         "and accessibility, design tools, frontend implementation, backend and infrastructure, "
         "AI-assisted work, methods. The design categories come first and there are more of them "
@@ -54,9 +51,6 @@ _CV_INSTRUCTIONS = {
     ),
     "engineering": (
         "This posting hires for engineering, so the CV has to read development-first.\n"
-        "- Open the summary with the frontend and fullstack development profile and the "
-        "technologies behind it. The design background follows afterwards, as what makes the "
-        "candidate's interface work stronger, never as the lead.\n"
         "- In the skills section, list the programming languages, frameworks and development tools "
         "first, then the AI tooling, then the design skills.\n"
         "- Group that section under category labels, in this order: frontend, backend and APIs, "
