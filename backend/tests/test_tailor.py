@@ -131,7 +131,7 @@ def test_letter_prompt_carries_no_fabrication_rule_and_template():
         ANALYSIS, PROFILE, parse_letter_template(PROFILE.cover_letter_template)
     )
 
-    assert "never add a skill" in system_prompt.lower()
+    assert "appear word for word in the master CV" in system_prompt
     assert "At DataForge I build APIs." in user_message
     assert "Available now for Acme GmbH." in user_message
     assert "Acme GmbH" in user_message
