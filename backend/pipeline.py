@@ -13,7 +13,15 @@ from backend.errors import FactCheckError, JobTitleMissingError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text
 from backend.grounding import skill_group_findings, with_master_skill_groups
-from backend.headline import cv_language, default_headline, headline_findings, read_headline
+from backend.headline import (
+    application_line_findings,
+    cv_language,
+    default_headline,
+    headline_findings,
+    read_headline,
+    with_application_line,
+    without_application_line,
+)
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
@@ -133,6 +141,7 @@ def run_pipeline(
                 headline = default_headline(analysis.discipline, cv_language(cv))
         if headline:
             cv = apply_position_headline(cv, headline)
+        cv = with_application_line(cv, analysis.job_title)
         if skill_group_findings(cv, cv_profile.master_cv_markdown):
             group_misses += 1
             # Same bargain as the headline: one retry, then the master CV's groups as they stand.
@@ -150,8 +159,9 @@ def run_pipeline(
             else headline_findings(read_headline(cv), job_title=analysis.job_title, language=cv_language(cv))
         )
         groups = [] if group_misses > 1 else skill_group_findings(cv, cv_profile.master_cv_markdown)
-        return headline + groups + check_cv(
-            cv,
+        # The application line is held to the analysis' title alone, not to the master CV.
+        return headline + groups + application_line_findings(cv, analysis.job_title) + check_cv(
+            without_application_line(cv),
             cv_profile.master_cv_markdown,
             posting_terms=posting_terms,
             allowed_text=allowed_text,

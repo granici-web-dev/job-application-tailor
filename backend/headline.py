@@ -52,6 +52,13 @@ DEFAULT_HEADLINES = {
 }
 DEFAULT_DISCIPLINE = "engineering"
 
+# The line under the headline naming the posting's position, word for word but for the
+# gender marker: "Bewerbung als: Frontend Developer React / TypeScript".
+APPLICATION_LABELS = {"de": "Bewerbung als", "en": "Application for"}
+APPLICATION_LINE = re.compile(r"^\s*(?:Bewerbung als|Application for):")
+GENDER_MARKER = re.compile(r"\s*\(\s*[mwfdxi](?:\s*/\s*[mwfdxi])+\s*\)", re.IGNORECASE)
+SECTION_HEADING = re.compile(r"^##\s+\S")
+
 GERMAN_SECTION = re.compile(r"^##\s*(profil|berufserfahrung|kenntnisse|ausbildung|sprachen)\b", re.I | re.M)
 NAME_HEADING = re.compile(r"^#\s+\S")
 HEADLINE_ONLY = re.compile(r"^\s*\*\*([^*]+)\*\*\s*$")
@@ -74,6 +81,63 @@ def read_headline(cv_markdown: str) -> str | None:
         match = HEADLINE_ONLY.match(line)
         return match.group(1).strip() if match else None
     return None
+
+
+def position_name(job_title: str) -> str:
+    """The job title without its gender marker: "Senior UX Designer (m/w/d)" is "Senior UX Designer"."""
+    return re.sub(r"\s{2,}", " ", GENDER_MARKER.sub("", job_title)).strip()
+
+
+def application_line(job_title: str, language: str) -> str:
+    return f"{APPLICATION_LABELS.get(language, APPLICATION_LABELS['en'])}: {position_name(job_title)}"
+
+
+def with_application_line(cv_markdown: str, job_title: str) -> str:
+    """The CV with the application line directly under the headline, replacing any there was.
+
+    Written in code from the analysis, so it never reaches the model or humanize.
+    """
+    lines = without_application_line(cv_markdown).splitlines()
+    heading = next((index for index, line in enumerate(lines) if NAME_HEADING.match(line)), None)
+    if heading is None:
+        return cv_markdown
+    anchor = heading
+    following = next((index for index in range(heading + 1, len(lines)) if lines[index].strip()), None)
+    if following is not None and HEADLINE_ONLY.match(lines[following]):
+        anchor = following
+    tail = lines[anchor + 1 :]
+    while tail and not tail[0].strip():
+        tail.pop(0)
+    line = application_line(job_title, cv_language(cv_markdown))
+    rebuilt = "\n".join(lines[: anchor + 1] + ["", line, ""] + tail)
+    return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def without_application_line(cv_markdown: str) -> str:
+    """The CV without the application line, for the fact check: it quotes the posting."""
+    lines = cv_markdown.splitlines()
+    first_section = next((i for i, line in enumerate(lines) if SECTION_HEADING.match(line)), len(lines))
+    found = [i for i in range(first_section) if APPLICATION_LINE.match(lines[i])]
+    if not found:
+        return cv_markdown
+    index = found[0]
+    end = index + 1
+    # The blank line after it goes with it, so the header keeps one gap.
+    if end < len(lines) and not lines[end].strip() and index > 0 and not lines[index - 1].strip():
+        end += 1
+    rebuilt = "\n".join(lines[:index] + lines[end:])
+    return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def application_line_findings(cv_markdown: str, job_title: str) -> list[str]:
+    """Where the application line is not the analysis' position, word for word."""
+    expected = application_line(job_title, cv_language(cv_markdown))
+    lines = cv_markdown.splitlines()
+    first_section = next((i for i, line in enumerate(lines) if SECTION_HEADING.match(line)), len(lines))
+    found = [lines[i].strip() for i in range(first_section) if APPLICATION_LINE.match(lines[i])]
+    if found == [expected]:
+        return []
+    return [f"The line under the headline must read '{expected}', exactly once; the CV has {found or 'none'}."]
 
 
 def headline_findings(headline: str | None, *, job_title: str, language: str) -> list[str]:

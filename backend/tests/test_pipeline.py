@@ -499,3 +499,12 @@ def test_a_position_entered_by_hand_replaces_the_missing_one(tmp_path):
 
     assert result.analysis.job_title == "Senior Backend Engineer"
     assert "Senior Backend Engineer" in _user_messages(client)[1]
+
+
+def test_the_cv_names_the_posting_position_under_the_headline(tmp_path):
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), _client_returning(SHORT_MASTER, SHORT_MASTER, LETTER_JSON))
+
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert draft.startswith(
+        "# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\nApplication for: Senior Backend Engineer\n"
+    )
