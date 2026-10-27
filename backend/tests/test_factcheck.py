@@ -457,3 +457,10 @@ def test_the_third_corlab_system_is_its_own_unit():
         posting_terms=terms,
     )
     assert findings and all("› Website und Back Office" in finding for finding in findings), findings
+
+
+def test_a_shared_adjective_ending_names_no_other_system():
+    """"Öffentliche" in the third system's bullet is not "staatliche" in the first one's name."""
+    master = THREE_SYSTEMS_MASTER.replace("- UX/UI-Audit über 6 Rollen", "- UX/UI-Audit über 6 Rollen, 3 Sprachen")
+
+    assert check_cv(master, master, posting_terms=[]) == []

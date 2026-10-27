@@ -56,6 +56,9 @@ NUMBER_WORDS = {
 _NUMBER_WORD = "|".join(NUMBER_WORDS)
 SPELLED_YEARS = re.compile(rf"\b({_NUMBER_WORD}|\d+)-?jährig\w*", re.IGNORECASE)
 SPELLED_NUMBER = re.compile(rf"\b({_NUMBER_WORD})\b", re.IGNORECASE)
+# An adjective's ending, which two words share without sharing a head: "öffentliche" and
+# "staatliche" end alike, yet one does not name the other.
+ADJECTIVE_ENDING = re.compile(r"(lich|isch|ig|bar|sam|haft)(e|en|er|es|em)?$")
 
 # Below this length a term ("UX", "UI", "Nx") is too generic to pin to one position: it
 # turns up in nearly every entry under some other spelling.
@@ -434,7 +437,9 @@ def _names_same(token: str, anchor: str) -> bool:
         return True
     if anchor.endswith(token):
         return False
-    return min(len(token), len(anchor)) >= 9 and _common_suffix(token, anchor) >= 5
+    if min(len(token), len(anchor)) < 9:
+        return False
+    return _common_suffix(ADJECTIVE_ENDING.sub("", token), ADJECTIVE_ENDING.sub("", anchor)) >= 5
 
 
 def _common_suffix(a: str, b: str) -> int:
