@@ -336,7 +336,10 @@ def build_letterhead(
     recipient = [analysis.company_name]
     if analysis.contact_person:
         recipient.append(f"{'z. Hd. ' if german else 'Attn: '}{analysis.contact_person}")
-    if analysis.location:
+    if analysis.address:
+        # "Musterstraße 1, 50667 Köln": the street on one line, postcode and city on the next.
+        recipient.extend(line.strip() for line in re.split(r"[,\n]", analysis.address) if line.strip())
+    elif analysis.location:
         recipient.append(analysis.location)
 
     subject = (

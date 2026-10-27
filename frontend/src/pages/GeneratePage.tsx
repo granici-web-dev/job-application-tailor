@@ -2,8 +2,10 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ApiError,
+  CONTACT_MISSING,
   downloadFile,
   generateApplication,
+  GenerateInput,
   GenerateResult,
   JOB_TEXT_MISSING,
   JOB_TITLE_MISSING,
@@ -26,6 +28,11 @@ export function GeneratePage() {
   const [downloadError, setDownloadError] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [needsText, setNeedsText] = useState(false)
+  // The title entered by hand stays for the next attempt, which asks for the recipient.
+  const [manualTitle, setManualTitle] = useState<string | undefined>(undefined)
+  const [needsContact, setNeedsContact] = useState(false)
+  const [contactPerson, setContactPerson] = useState('')
+  const [address, setAddress] = useState('')
   const textArea = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
@@ -50,17 +57,26 @@ export function GeneratePage() {
     event.preventDefault()
     setNeedsJobTitle(false)
     setJobTitle('')
+    setManualTitle(undefined)
+    setNeedsContact(false)
     void generate()
   }
 
   function onSubmitJobTitle(event: FormEvent) {
     event.preventDefault()
     if (jobTitle.trim()) {
+      setManualTitle(jobTitle.trim())
       void generate(jobTitle.trim())
     }
   }
 
-  async function generate(manualJobTitle?: string) {
+  function onSubmitContact(event: FormEvent) {
+    event.preventDefault()
+    // Both may stay empty: the letter then greets "Sehr geehrte Damen und Herren" and names the city.
+    void generate(manualTitle, { contact_person: contactPerson.trim(), address: address.trim() })
+  }
+
+  async function generate(manualJobTitle?: string, contact?: { contact_person: string; address: string }) {
     const trimmed = url.trim()
     const trimmedText = text.trim()
     // Pasted text is the posting whatever the link, so it goes without one too.
@@ -73,7 +89,7 @@ export function GeneratePage() {
     setDownloadError('')
     setNeedsText(false)
     try {
-      const payload: { url: string; text?: string; job_title?: string } = { url: trimmed }
+      const payload: GenerateInput = { url: trimmed, ...contact }
       if (trimmedText) {
         payload.text = trimmedText
       }
@@ -82,10 +98,17 @@ export function GeneratePage() {
       }
       const data = await generateApplication(payload)
       setNeedsJobTitle(false)
+      setNeedsContact(false)
       setResult(data)
       setPhase('success')
     } catch (caught) {
       setNeedsJobTitle(caught instanceof ApiError && caught.code === JOB_TITLE_MISSING)
+      setNeedsContact(caught instanceof ApiError && caught.code === CONTACT_MISSING)
+      if (caught instanceof ApiError && caught.code === CONTACT_MISSING) {
+        const found = caught.data
+        setContactPerson(typeof found.contact_person === 'string' ? found.contact_person : '')
+        setAddress(typeof found.address === 'string' ? found.address : '')
+      }
       if (caught instanceof ApiError && caught.code === JOB_TEXT_MISSING) {
         setShowText(true)
         setNeedsText(true)
@@ -210,6 +233,43 @@ export function GeneratePage() {
             />
           </div>
           <button type="submit" className="btn btn-primary" disabled={jobTitle.trim() === ''}>
+            Сгенерировать
+          </button>
+        </form>
+      )}
+
+      {needsContact && !loading && (
+        <form className="contact-form" onSubmit={onSubmitContact}>
+          <div className="field">
+            <label htmlFor="contact-person" className="manual-label">
+              Ansprechpartner
+            </label>
+            <input
+              id="contact-person"
+              className="text-input"
+              type="text"
+              placeholder="Frau Anna Müller"
+              value={contactPerson}
+              onChange={(event) => setContactPerson(event.target.value)}
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="contact-address" className="manual-label">
+              Adresse
+            </label>
+            <input
+              id="contact-address"
+              className="text-input"
+              type="text"
+              placeholder="Musterstraße 1, 50667 Köln"
+              value={address}
+              onChange={(event) => setAddress(event.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <button type="submit" className="btn btn-primary">
             Сгенерировать
           </button>
         </form>

@@ -9,7 +9,13 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.analyze import analyze_job, names_a_position
-from backend.errors import FactCheckError, JobAnalysisError, JobTextMissingError, JobTitleMissingError
+from backend.errors import (
+    ContactDetailsMissingError,
+    FactCheckError,
+    JobAnalysisError,
+    JobTextMissingError,
+    JobTitleMissingError,
+)
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text, job_board_posting
 from backend.grounding import skill_group_findings, with_master_skill_groups
@@ -85,6 +91,9 @@ def run_pipeline(
     today: date,
     include_photo: bool = True,
     job_title: str | None = None,
+    contact_person: str | None = None,
+    address: str | None = None,
+    ask_for_contact: bool = False,
 ) -> PipelineResult:
     # Text pasted by hand is the posting, whatever the link: it is never fetched.
     fetched_from_board = job_text is None and job_board_posting(job_url) is not None
@@ -111,6 +120,15 @@ def run_pipeline(
         # Never a page title or a guess in its place: the position goes on the CV and the letter.
         logger.warning("The posting names no position (%r); asking for one", analysis.job_title)
         raise JobTitleMissingError()
+    # The recipient entered by hand stands over the analysis'; left empty, the analysis' stays.
+    analysis = replace(
+        analysis,
+        contact_person=(contact_person or "").strip() or analysis.contact_person,
+        address=(address or "").strip() or analysis.address,
+    )
+    if ask_for_contact and not (analysis.contact_person and analysis.address):
+        logger.info("The posting names no contact person or no address; asking for them")
+        raise ContactDetailsMissingError(contact_person=analysis.contact_person, address=analysis.address)
 
     logger.info("Loading profile from %s", profile_dir)
     profile = load_profile(profile_dir)

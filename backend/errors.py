@@ -44,6 +44,15 @@ class JobTitleMissingError(TailorError):
         super().__init__("Название позиции не найдено, укажите его вручную")
 
 
+class ContactDetailsMissingError(TailorError):
+    """The posting names no contact person or no address; the page offers both fields."""
+
+    def __init__(self, *, contact_person: str | None, address: str | None) -> None:
+        super().__init__("В вакансии нет контактного лица или адреса. Укажите их, если знаете; оба поля необязательны")
+        self.contact_person = contact_person
+        self.address = address
+
+
 class JobTextMissingError(TailorError):
     """The posting is rendered with JavaScript; the pipeline waits for its text pasted by hand."""
 

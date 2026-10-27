@@ -35,6 +35,8 @@ def main(argv: list[str] | None = None) -> int:
             today=date.today(),
             include_photo=args.include_photo,
             job_title=args.job_title,
+            contact_person=args.contact_person,
+            address=args.address,
         )
     except TailorError as error:
         print(str(error), file=sys.stderr)
@@ -75,6 +77,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--job-title",
         help="The position's name, for a posting that names none (an Initiativbewerbung).",
+    )
+    parser.add_argument(
+        "--contact-person",
+        help="The letter's Ansprechpartner, e.g. 'Frau Anna Müller', when the posting names none.",
+    )
+    parser.add_argument(
+        "--address",
+        help="The employer's postal address for the letter, e.g. 'Musterstraße 1, 50667 Köln'.",
     )
     parser.add_argument(
         "--output-dir",

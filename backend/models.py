@@ -24,6 +24,8 @@ class JobAnalysis:
     # Last and defaulted so an analysis that predates the field still builds — as neutral,
     # which is exactly how an unclassified posting should be treated.
     discipline: str = "unknown"
+    # The postal address for the letter's recipient block, when the posting gives one.
+    address: str | None = None
 
     @classmethod
     def from_response_dict(cls, data: dict) -> "JobAnalysis":
@@ -47,6 +49,7 @@ class JobAnalysis:
             key_responsibilities=_string_list(data.get("key_responsibilities")),
             language_requirements=_string_list(data.get("language_requirements")),
             discipline=discipline,
+            address=_optional_text(data.get("address")),
         )
 
     def to_dict(self) -> dict:

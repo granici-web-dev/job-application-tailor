@@ -66,6 +66,20 @@ def test_german_letterhead_carries_sender_recipient_date_and_betreff():
     assert head.endswith("\n\n")
 
 
+def test_a_postal_address_takes_the_place_of_the_city():
+    head = build_letterhead(
+        PERSONAL,
+        _analysis(contact_person="Frau Anna Müller", address="Hohenstaufenring 62, 50674 Köln"),
+        today=date(2026, 7, 27),
+        letter_body=GERMAN_BODY,
+    )
+
+    assert (
+        '<p class="letter-recipient">Musterfirma Testwerk GmbH<br>z. Hd. Frau Anna Müller'
+        "<br>Hohenstaufenring 62<br>50674 Köln</p>"
+    ) in head
+
+
 def test_english_letter_gets_an_english_subject_and_date():
     head = build_letterhead(PERSONAL, _analysis(), today=date(2026, 7, 27), letter_body=ENGLISH_BODY)
 

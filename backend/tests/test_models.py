@@ -75,3 +75,10 @@ def test_job_analysis_keeps_the_ai_discipline():
 def test_a_missing_job_title_is_left_empty_for_the_pipeline_to_ask_for():
     assert JobAnalysis.from_response_dict({"company_name": "Acme GmbH", "job_title": None}).job_title == ""
     assert JobAnalysis.from_response_dict({"company_name": "Acme GmbH"}).job_title == ""
+
+
+def test_job_analysis_keeps_the_postal_address_and_leaves_a_missing_one_empty():
+    data = {"company_name": "Acme GmbH", "job_title": "Backend Engineer"}
+
+    assert JobAnalysis.from_response_dict({**data, "address": " Ring 1, 1010 Wien "}).address == "Ring 1, 1010 Wien"
+    assert JobAnalysis.from_response_dict(data).address is None

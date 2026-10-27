@@ -44,6 +44,10 @@ LETTER_JSON = json.dumps(
 )
 
 
+# The recipient fields answered and left empty, as the page sends them after asking.
+NO_CONTACT = {"contact_person": "", "address": ""}
+
+
 def _message(text):
     return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
 
@@ -93,7 +97,7 @@ def test_generate_returns_ids_and_serves_files(client):
     app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
     app.dependency_overrides[get_anthropic_client] = _fake_client
 
-    response = client.post("/generate", json={"url": "https://example.com/jobs/1", "text": "Backend role at Acme GmbH."})
+    response = client.post("/generate", json={"url": "https://example.com/jobs/1", "text": "Backend role at Acme GmbH.", **NO_CONTACT})
 
     assert response.status_code == 200
     body = response.json()
@@ -350,7 +354,7 @@ def test_a_position_entered_by_hand_goes_to_the_pipeline(client):
 
     response = client.post(
         "/generate",
-        json={"url": "https://example.com/jobs/1", "text": "Initiativbewerbung.", "job_title": "Backend Engineer"},
+        json={"url": "https://example.com/jobs/1", "text": "Initiativbewerbung.", "job_title": "Backend Engineer", **NO_CONTACT},
     )
 
     assert response.status_code == 200
@@ -384,6 +388,47 @@ def test_pasted_text_needs_no_link(client):
     app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
     app.dependency_overrides[get_anthropic_client] = _fake_client
 
-    response = client.post("/generate", json={"text": "Backend role at Acme GmbH."})
+    response = client.post("/generate", json={"text": "Backend role at Acme GmbH.", **NO_CONTACT})
 
     assert response.status_code == 200
+
+
+def test_a_posting_without_contact_or_address_asks_for_both(client):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    fake = Mock()
+    fake.messages.create.side_effect = [
+        _message(json.dumps({**json.loads(ANALYSIS_JSON), "contact_person": "Frau Anna Müller", "address": None}))
+    ]
+    app.dependency_overrides[get_anthropic_client] = lambda: fake
+
+    response = client.post("/generate", json={"url": "https://example.com/jobs/1", "text": "Backend role at Acme GmbH."})
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "contact_missing"
+    assert response.json()["contact_person"] == "Frau Anna Müller"
+    assert response.json()["address"] is None
+    assert fake.messages.create.call_count == 1
+
+
+@pytest.mark.parametrize(
+    ("answer", "recipient"),
+    [
+        ({"contact_person": "", "address": ""}, "Acme GmbH</p>"),
+        (
+            {"contact_person": "Herr Max Weber", "address": "Ring 1, 1010 Wien"},
+            "Acme GmbH<br>Attn: Herr Max Weber<br>Ring 1<br>1010 Wien</p>",
+        ),
+    ],
+)
+def test_the_answered_fields_go_to_the_letterhead_and_left_empty_keep_the_city(client, answer, recipient):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    app.dependency_overrides[get_anthropic_client] = _fake_client
+
+    response = client.post(
+        "/generate", json={"url": "https://example.com/jobs/1", "text": "Backend role at Acme GmbH.", **answer}
+    )
+
+    assert response.status_code == 200
+    company = response.json()["company"]
+    letter = (client.output_dir / company / "_drafts" / "cover_letter.md").read_text(encoding="utf-8")
+    assert f'<p class="letter-recipient">{recipient}' in letter

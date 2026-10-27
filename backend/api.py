@@ -14,6 +14,7 @@ from pydantic import BaseModel, field_validator
 from backend.config import Settings, frontend_origins, load_settings, make_anthropic_client
 from backend.errors import (
     ApplicationNotFoundError,
+    ContactDetailsMissingError,
     JobTextMissingError,
     JobTitleMissingError,
     TailorError,
@@ -58,6 +59,9 @@ class GenerateRequest(BaseModel):
     text: str | None = None
     lang: str | None = None
     job_title: str | None = None
+    # None until the page has asked for them; an empty string is an answer left blank.
+    contact_person: str | None = None
+    address: str | None = None
 
 
 class GenerateResponse(BaseModel):
@@ -149,6 +153,20 @@ async def _handle_job_text_missing(request: Request, exc: JobTextMissingError) -
     return JSONResponse(status_code=422, content={"detail": str(exc), "code": "job_text_missing"})
 
 
+@app.exception_handler(ContactDetailsMissingError)
+async def _handle_contact_missing(request: Request, exc: ContactDetailsMissingError) -> JSONResponse:
+    # The page offers both fields, filled with what the analysis found.
+    return JSONResponse(
+        status_code=422,
+        content={
+            "detail": str(exc),
+            "code": "contact_missing",
+            "contact_person": exc.contact_person,
+            "address": exc.address,
+        },
+    )
+
+
 @app.exception_handler(TailorError)
 async def _handle_tailor_error(request: Request, exc: TailorError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -172,6 +190,9 @@ def generate(
         language=request.lang,
         today=date.today(),
         job_title=request.job_title,
+        contact_person=request.contact_person,
+        address=request.address,
+        ask_for_contact=request.contact_person is None and request.address is None,
     )
     company = result.company_dir.name
     cv_pdf = result.cv_pdf_path.name

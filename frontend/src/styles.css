@@ -288,6 +288,19 @@ button {
   font-size: 13px;
 }
 
+/* The letter's recipient, asked for when the posting names none: two optional fields. */
+.contact-form {
+  margin-top: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  animation: fade-in-up 0.2s var(--ease-out);
+}
+
+.contact-form .btn-primary {
+  align-self: flex-start;
+}
+
 /* Manual job-text input */
 .text-toggle {
   margin-top: var(--s-3);
@@ -702,7 +715,8 @@ button {
   .generate-form {
     flex-direction: column;
   }
-  .generate-form .btn-primary {
+  .generate-form .btn-primary,
+  .contact-form .btn-primary {
     width: 100%;
   }
 }

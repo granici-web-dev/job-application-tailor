@@ -12,6 +12,7 @@ The JSON object must have exactly these keys:
   "employment_type": "remote | onsite | hybrid | unknown",
   "location": "string or null",
   "contact_person": "string or null",
+  "address": "string or null",
   "hard_skills": ["string"],
   "soft_skills": ["string"],
   "keywords": ["string"],
@@ -33,6 +34,7 @@ Rules:
 - `employment_type` is one of remote, onsite, hybrid, or unknown. If the posting is ambiguous, use unknown.
 - `location` is the work location if stated, otherwise null.
 - `contact_person` is the person the application should go to, if the posting names one (an Ansprechpartner, a recruiter, a hiring manager). Copy the name exactly as the posting writes it, keeping any Frau, Herr, Dr. or Mr/Ms it carries; do not add a form of address the posting does not use, and do not infer one from the name. Use null when no person is named.
+- `address` is the postal address the posting gives for the employer or for applications: street and number, postcode and city, as the posting writes them, separated by commas (for example "Musterstraße 1, 50667 Köln"). Use null when the posting gives no street address; a city alone is not an address.
 - `hard_skills` are concrete technical skills, tools, and technologies the posting asks for.
 - `soft_skills` are interpersonal and working-style qualities the posting asks for.
 - `keywords` are the terms a recruiter or ATS would scan for: technologies, tools, methodologies, and role-specific phrasing drawn from the posting. These are later used to optimize a CV against this posting.

@@ -37,11 +37,13 @@ export interface GenerateResult {
 
 export const JOB_TITLE_MISSING = 'job_title_missing'
 export const JOB_TEXT_MISSING = 'job_text_missing'
+export const CONTACT_MISSING = 'contact_missing'
 
 export class ApiError extends Error {
   constructor(
     message: string,
     readonly code?: string,
+    readonly data: Record<string, unknown> = {},
   ) {
     super(message)
   }
@@ -51,7 +53,7 @@ async function apiError(response: Response): Promise<ApiError> {
   try {
     const data = await response.json()
     if (typeof data.detail === 'string') {
-      return new ApiError(data.detail, typeof data.code === 'string' ? data.code : undefined)
+      return new ApiError(data.detail, typeof data.code === 'string' ? data.code : undefined, data)
     }
   } catch {
     // fall through to a generic message
@@ -63,11 +65,15 @@ async function errorMessage(response: Response): Promise<string> {
   return (await apiError(response)).message
 }
 
-export async function generateApplication(input: {
+export interface GenerateInput {
   url?: string
   text?: string
   job_title?: string
-}): Promise<GenerateResult> {
+  contact_person?: string
+  address?: string
+}
+
+export async function generateApplication(input: GenerateInput): Promise<GenerateResult> {
   const response = await fetch(`${API_URL}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
