@@ -309,9 +309,26 @@ def test_tailor_letter_assembles_the_model_parts_around_the_template():
     assert request.endswith("## Fact check\n- x")
 
 
-def test_tailor_letter_rejects_an_answer_that_is_not_the_three_parts():
-    with pytest.raises(LLMError):
-        tailor_letter(_analysis(), _profile(), client=_client("Sehr geehrte Damen und Herren, ..."), model="m")
+def test_tailor_letter_rejects_an_answer_that_is_not_the_three_parts_twice():
+    client = _client("Sehr geehrte Damen und Herren, ...")
+
+    with pytest.raises(LLMError, match="after 2 attempts"):
+        tailor_letter(_analysis(), _profile(), client=client, model="m")
+
+    assert client.messages.create.call_count == 2
+
+
+def test_tailor_letter_asks_once_more_after_an_answer_that_is_not_json():
+    parts = {"salutation": "Sehr geehrte Damen und Herren,", "intro": "Ihre Ausschreibung hat mich angesprochen.", "adjusted_paragraph": CORLAB}
+    client = Mock()
+    client.messages.create.side_effect = [
+        SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(parts) + "\nNoch ein Satz.")]),
+        SimpleNamespace(content=[SimpleNamespace(type="text", text=json.dumps(parts))]),
+    ]
+
+    assert tailor_letter(_analysis(), _profile(), client=client, model="m") == _letter()
+    first, second = (call.kwargs["messages"][0]["content"] for call in client.messages.create.call_args_list)
+    assert first == second
 
 
 def test_a_template_without_the_company_placeholder_needs_none():

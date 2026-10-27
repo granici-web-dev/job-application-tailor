@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from dataclasses import dataclass
 from datetime import date
@@ -17,8 +18,12 @@ from backend.llm import complete
 from backend.models import JobAnalysis
 from backend.profile import PersonalInfo, Profile
 
+logger = logging.getLogger(__name__)
+
 LETTER_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "tailor_letter.md"
 MAX_TOKENS = 1500
+# An answer that is not the JSON parts is asked for once more, then the letter fails.
+LETTER_ATTEMPTS = 2
 MAX_LETTER_WORDS = 300
 # At most this many sentences of the adjustable paragraph may differ from the template.
 MAX_ADDED_SENTENCES = 1
@@ -112,15 +117,22 @@ def tailor_letter(
     system_prompt, user_message = build_letter_prompt(analysis, profile, template, company_page)
     if feedback:
         user_message += "\n\n" + feedback
-    raw = complete(client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS)
-    try:
-        parts = json.loads(_strip_json_fences(raw))
-        salutation, intro, adjusted = (
-            parts["salutation"], parts["intro"], parts["adjusted_paragraph"]
-        )
-    except (json.JSONDecodeError, KeyError, TypeError) as error:
-        raise LLMError("The model did not return the cover letter parts in the expected form.") from error
-    return assemble_letter(template, analysis, salutation=salutation, intro=intro, adjusted=adjusted)
+    for attempt in range(1, LETTER_ATTEMPTS + 1):
+        raw = complete(client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS)
+        try:
+            parts = json.loads(_strip_json_fences(raw))
+            salutation, intro, adjusted = (
+                parts["salutation"], parts["intro"], parts["adjusted_paragraph"]
+            )
+        except (json.JSONDecodeError, KeyError, TypeError) as error:
+            if attempt < LETTER_ATTEMPTS:
+                logger.warning("The cover letter parts were not valid JSON; asking once more")
+                continue
+            raise LLMError(
+                f"The model did not return the cover letter parts in the expected form after "
+                f"{LETTER_ATTEMPTS} attempts. Try running the command again."
+            ) from error
+        return assemble_letter(template, analysis, salutation=salutation, intro=intro, adjusted=adjusted)
 
 
 def assemble_letter(
