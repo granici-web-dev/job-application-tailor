@@ -12,7 +12,7 @@ from anthropic import Anthropic
 
 from backend.analyze import _strip_json_fences
 from backend.errors import LLMError, ProfileError
-from backend.factcheck import sentence_unit
+from backend.factcheck import sentence_unit, shared_technologies, unit_stacks
 from backend.grounding import skill_wording
 from backend.llm import complete
 from backend.models import JobAnalysis
@@ -29,7 +29,10 @@ MAX_LETTER_WORDS = 300
 MAX_ADDED_SENTENCES = 1
 MAX_CHANGED_SENTENCE_WORDS = 30
 # A dash between spaces sets off an insertion; a hyphen inside a compound ("WCAG-Audit") does not.
-INSERTION_DASH = re.compile(r"\s[–—-]\s")
+# Two spaced dashes set off an insertion; one alone joins two clauses ("… gesucht – und …").
+INSERTION_DASH = re.compile(r"\s[–—-]\s.*\s[–—-]\s")
+# A system whose stack shares this many technologies with the posting gets a sentence saying so.
+MIN_SHARED_STACK = 2
 
 GERMAN_MONTHS = (
     "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -205,6 +208,30 @@ def template_findings(letter: str, template: LetterTemplate, analysis: JobAnalys
     return findings
 
 
+@dataclass(frozen=True)
+class StackMatch:
+    """A system of the adjustable paragraph whose Tech-Stack the posting asks for."""
+
+    unit: str
+    shared: list[str]
+    # The template's sentence about the system, which the added sentence follows.
+    anchor: str
+
+
+def stack_match(analysis: JobAnalysis, template: LetterTemplate, master_markdown: str) -> StackMatch | None:
+    """The system whose stack shares at least MIN_SHARED_STACK technologies with the posting."""
+    sentences = _sentences(fill_placeholders(template.adjustable, analysis))
+    if not sentences:
+        return None
+    context = sentences[0]
+    for unit, stack in unit_stacks(context, master_markdown):
+        shared = shared_technologies(stack, analysis.hard_skills + analysis.keywords)
+        anchor = next((s for s in sentences[1:] if sentence_unit(s, context, master_markdown) == unit), None)
+        if len(shared) >= MIN_SHARED_STACK and anchor:
+            return StackMatch(unit=unit, shared=shared, anchor=anchor)
+    return None
+
+
 def changed_sentence_findings(
     letter: str, template: LetterTemplate, analysis: JobAnalysis, master_markdown: str | None = None
 ) -> list[str]:
@@ -257,6 +284,10 @@ def _placement_findings(
     index = added[0]
     sentence = sentences[index]
     home = sentence_unit(sentence, context, master_markdown)
+    stack = stack_match(analysis, template, master_markdown)
+    if home is None and stack is not None:
+        # The sentence about the shared stack names no system; it follows the one with that stack.
+        home = stack.unit
     anchor = next((s for s, unit in systems if home and unit == home), context)
     if index > 0 and _squashed(sentences[index - 1]) == _squashed(anchor):
         return []
@@ -395,10 +426,24 @@ def build_letter_prompt(
             + "\n".join(f"- {line}" for line in skill_wording(profile.master_cv_markdown)),
             "## Candidate master CV (the only source of facts)\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
+            *_stack_sections(stack_match(analysis, template, profile.master_cv_markdown)),
             *(_unsolicited_sections(analysis, company_page) if company_page is not None else []),
         ]
     )
     return system_prompt, user_message
+
+
+def _stack_sections(match: StackMatch | None) -> list[str]:
+    if match is None:
+        return []
+    return [
+        "## Stack match\n"
+        f"The posting asks for {len(match.shared)} technologies of the stack the master CV lists for "
+        f"'{match.unit}': {', '.join(match.shared)}. Your one added sentence says that this is the stack "
+        f"the posting is looking for, and goes directly after the template's sentence '{match.anchor.strip()}'. "
+        "For example: „Der Stack ist derselbe, den Sie suchen – und Claude Code ist dabei mein tägliches "
+        "Werkzeug.“ Every fact in it comes from the master CV's entry for this position."
+    ]
 
 
 def _unsolicited_sections(analysis: JobAnalysis, company_page: str) -> list[str]:

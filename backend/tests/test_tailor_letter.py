@@ -16,6 +16,7 @@ from backend.tailor_letter import (
     company_sentence,
     parse_letter_template,
     restore_template_paragraph,
+    stack_match,
     tailor_letter,
     template_findings,
     unsolicited_intro_findings,
@@ -544,3 +545,75 @@ def test_a_skill_listed_under_no_system_does_not_move_the_sentence_off_its_syste
 
     assert _placement(after_first_system) == []
     assert "is about the system 'Verwaltungssystem" in _placement(CORLAB + " " + sentence)[0]
+
+
+STACK_TEMPLATE = TEMPLATE.replace(
+    "Ein zweites System habe ich auditiert.",
+    "Für eine Arztpraxis habe ich eine Plattform gebaut. Ein zweites System habe ich auditiert.",
+)
+STACK_CORLAB = CORLAB.replace(
+    "Ein zweites System habe ich auditiert.",
+    "Für eine Arztpraxis habe ich eine Plattform gebaut. Ein zweites System habe ich auditiert.",
+)
+STACK_MASTER = PLACEMENT_MASTER + """
+**Website und Back Office für eine Kinderarzt- und Ernährungspraxis (Moldau) – Fullstack-Plattform:**
+
+- Online-Zahlung und Terminbuchung
+- Tech-Stack: Next.js 16, React 19, TypeScript, NestJS 11, Prisma 7, PostgreSQL 16, Nx / pnpm, Docker, Vercel
+"""
+STACK_SENTENCE = "Der Stack ist derselbe, den Sie suchen – und Claude Code ist dabei mein tägliches Werkzeug."
+STACK_POSTING = _analysis(hard_skills=["Node.js", "PostgreSQL", "TypeScript"], keywords=["Claude Code", "React"])
+
+
+def _stack_letter(adjusted, analysis=STACK_POSTING):
+    template = parse_letter_template(STACK_TEMPLATE)
+    letter = assemble_letter(template, analysis, salutation="Hallo,", intro="Einleitung.", adjusted=adjusted)
+    return changed_sentence_findings(letter, template, analysis, STACK_MASTER)
+
+
+def test_a_posting_sharing_two_technologies_with_a_system_gets_a_stack_match():
+    match = stack_match(STACK_POSTING, parse_letter_template(STACK_TEMPLATE), STACK_MASTER)
+
+    assert match.unit.startswith("Website und Back Office für eine Kinderarzt")
+    assert match.shared == ["React", "TypeScript", "PostgreSQL"]
+    assert match.anchor == "Für eine Arztpraxis habe ich eine Plattform gebaut."
+
+
+def test_one_shared_technology_is_no_stack_match():
+    one = _analysis(hard_skills=["PostgreSQL", "Java"], keywords=[])
+
+    assert stack_match(one, parse_letter_template(STACK_TEMPLATE), STACK_MASTER) is None
+
+
+def test_the_stack_sentence_goes_after_the_arztpraxis_sentence():
+    after_practice = STACK_CORLAB.replace("gebaut. Ein", f"gebaut. {STACK_SENTENCE} Ein")
+
+    assert _stack_letter(after_practice) == []
+    assert "goes directly after the template's sentence 'Für eine Arztpraxis habe ich eine Plattform gebaut.'" in (
+        _stack_letter(STACK_CORLAB + " " + STACK_SENTENCE)[0]
+    )
+
+
+def test_without_a_stack_match_the_sentence_goes_after_the_first_sentence_as_before():
+    no_match = _analysis(hard_skills=["Java"], keywords=[])
+    after_practice = STACK_CORLAB.replace("gebaut. Ein", f"gebaut. {STACK_SENTENCE} Ein")
+
+    assert "is about the position as a whole" in _stack_letter(after_practice, no_match)[0]
+
+
+def test_the_prompt_names_the_shared_stack_only_when_there_is_one():
+    profile = Profile(master_cv_markdown=STACK_MASTER, cover_letter_template=STACK_TEMPLATE, personal=PERSONAL)
+    template = parse_letter_template(STACK_TEMPLATE)
+
+    _, with_match = build_letter_prompt(STACK_POSTING, profile, template)
+    _, without = build_letter_prompt(_analysis(hard_skills=["Java"]), profile, template)
+
+    assert "## Stack match\nThe posting asks for 3 technologies" in with_match
+    assert "React, TypeScript, PostgreSQL" in with_match
+    assert "'Für eine Arztpraxis habe ich eine Plattform gebaut.'" in with_match
+    assert "Der Stack ist derselbe, den Sie suchen" in with_match
+    assert "## Stack match" not in without
+
+
+def test_a_single_dash_joining_two_clauses_is_not_an_insertion():
+    assert _sentence_findings(CORLAB + " " + STACK_SENTENCE) == []

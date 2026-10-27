@@ -336,6 +336,38 @@ def sentence_unit(sentence: str, context: str, master_markdown: str) -> str | No
     return holders[0].name if len(holders) == 1 else None
 
 
+STACK_LINE = re.compile(r"^\s*-?\s*Tech-Stack:\s*(.+?)\.?\s*$", re.M)
+VERSION = re.compile(r"\s+\d[\d.]*$")
+
+
+def unit_stacks(context: str, master_markdown: str) -> list[tuple[str, list[str]]]:
+    """The units of the entry `context` names that list a Tech-Stack, each with its technologies.
+
+    "Next.js 16, Nx / pnpm" is ["Next.js", "Nx", "pnpm"]: the versions go, a slash splits.
+    """
+    master = _read_master(master_markdown)
+    entry = next(iter(_mentioned(context, master.entries)), None)
+    if entry is None:
+        return []
+    stacks = []
+    for unit in entry.units:
+        line = STACK_LINE.search(unit.text)
+        if line:
+            technologies = [
+                VERSION.sub("", part.strip())
+                for item in line.group(1).split(",")
+                for part in item.split("/")
+                if part.strip()
+            ]
+            stacks.append((unit.name, technologies))
+    return stacks
+
+
+def shared_technologies(stack: list[str], posting_terms: list[str]) -> list[str]:
+    """The stack's technologies the posting names, as whole words either way round."""
+    return [tech for tech in stack if any(_occurs(tech, term) or _occurs(term, tech) for term in posting_terms)]
+
+
 def _read_master(master_markdown: str) -> _Master:
     raw: list[tuple[str, str, list[str]]] = []
     for section, lines in _sections(master_markdown):
