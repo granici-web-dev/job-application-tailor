@@ -9,7 +9,6 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.emphasis import emphasis_section
-from backend.headline import headline_section
 from backend.grounding import SKILL_HEADING, missing_required_skills, unsupported_skills
 from backend.llm import complete
 from backend.models import JobAnalysis
@@ -96,8 +95,7 @@ def tailor_cv(
 def apply_position_headline(cv_markdown: str, headline: str) -> str:
     """Put the headline directly under the name, replacing any the CV already has.
 
-    Put back in code after humanize, which would otherwise reword a line the headline check
-    has already passed.
+    Put in code after humanize, which would otherwise reword it.
     """
     lines = cv_markdown.splitlines()
     heading = next((index for index, line in enumerate(lines) if NAME_HEADING.match(line)), None)
@@ -722,7 +720,6 @@ def build_cv_prompt(
             "## Candidate contact details\n" + profile.personal.as_contact_lines(),
             "## Candidate master CV\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
-            headline_section(analysis.job_title),
             *emphasis_section(analysis.discipline, kind="cv"),
         ]
     )

@@ -347,33 +347,31 @@ def test_the_summary_is_the_master_paragraph_and_never_reaches_humanize(tmp_path
     assert "production" not in draft
 
 
-def test_a_headline_off_the_role_list_twice_falls_back_to_the_default(tmp_path):
+def test_the_headline_is_set_in_code_whatever_the_model_writes(tmp_path):
     off_list = SHORT_MASTER.replace(
         "**Design Engineer · Full-Stack Developer**", "**Solution Architect · AI Engineer**"
     )
-    client = _client_returning(off_list, off_list, off_list, off_list, LETTER_JSON)
+    client = _client_returning(off_list, off_list, LETTER_JSON)
 
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
-    assert "'Solution Architect' is not on the allowed list" in _user_messages(client)[3]
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert "Solution Architect" not in draft
-    assert draft.startswith("# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n")
+    assert draft.startswith("# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\n## Summary")
 
 
-def test_a_headline_fixed_on_the_retry_is_kept(tmp_path):
-    off_list = SHORT_MASTER.replace(
-        "**Design Engineer · Full-Stack Developer**", "**Solution Architect · AI Engineer**"
-    )
-    fixed = SHORT_MASTER.replace(
-        "**Design Engineer · Full-Stack Developer**", "**AI Engineer · Full-Stack Developer**"
-    )
-    client = _client_returning(off_list, off_list, fixed, fixed, LETTER_JSON)
+def test_a_title_with_a_listed_role_is_the_headline_without_its_level(tmp_path):
+    analysis = json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Senior Frontend Developer (m/w/d) React"})
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(analysis), _message(SHORT_MASTER), _message(SHORT_MASTER), _message(LETTER_JSON)
+    ]
 
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert draft.startswith("# Ivan Petrov\n\n**AI Engineer · Full-Stack Developer**\n")
+    assert draft.startswith("# Ivan Petrov\n\n**Frontend Developer React**\n\n## Summary")
+    assert "Application for" not in draft
 
 
 def test_the_cv_gets_only_the_projects_for_the_discipline_and_the_letter_gets_all(tmp_path):
@@ -490,13 +488,29 @@ def test_a_position_entered_by_hand_replaces_the_missing_one(tmp_path):
     assert "Senior Backend Engineer" in _user_messages(client)[1]
 
 
-def test_the_cv_names_the_posting_position_under_the_headline(tmp_path):
-    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), _client_returning(SHORT_MASTER, SHORT_MASTER, LETTER_JSON))
+def test_a_position_entered_by_hand_gives_the_headline_by_the_same_rule(tmp_path):
+    letter = json.dumps(
+        {**json.loads(LETTER_JSON), "intro": "ich bewerbe mich initiativ als Junior Frontend Developer bei der Acme GmbH."}
+    )
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(UNSOLICITED_JSON), _message(SHORT_MASTER), _message(SHORT_MASTER), _message(letter)
+    ]
+
+    result = run_pipeline(
+        job_url="https://example.com/jobs/1",
+        job_text="Initiativbewerbung bei Acme GmbH.",
+        output_dir=tmp_path,
+        profile_dir=_profile_dir_with_master(tmp_path, SHORT_MASTER),
+        client=client,
+        model="claude-sonnet-4-6",
+        language=None,
+        today=date(2026, 6, 1),
+        job_title="Junior Frontend Developer",
+    )
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert draft.startswith(
-        "# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\nApplication for: Senior Backend Engineer\n"
-    )
+    assert draft.startswith("# Ivan Petrov\n\n**Frontend Developer**\n\n## Summary")
 
 
 def test_an_unsolicited_letter_gets_the_company_page_and_its_opening_is_checked(tmp_path):

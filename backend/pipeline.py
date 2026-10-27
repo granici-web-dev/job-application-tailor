@@ -13,16 +13,7 @@ from backend.errors import FactCheckError, JobTitleMissingError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text
 from backend.grounding import skill_group_findings, with_master_skill_groups
-from backend.headline import (
-    application_line_findings,
-    cv_language,
-    default_headline,
-    headline_findings,
-    position_name,
-    read_headline,
-    with_application_line,
-    without_application_line,
-)
+from backend.headline import cv_headline, cv_language, position_name, posting_title
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
@@ -134,17 +125,20 @@ def run_pipeline(
         [profile.personal.as_contact_lines(), analysis.job_title or "", analysis.company_name or ""]
     )
     # A posting term inside these is the posting quoted, not a skill claimed.
-    # Its form without the gender marker too: the headline and the application line quote it so.
-    posting_names = [analysis.job_title or "", position_name(analysis.job_title), analysis.company_name or ""]
+    # Its form without the gender marker and the level too: the headline quotes it so.
+    posting_names = [
+        analysis.job_title or "",
+        position_name(analysis.job_title),
+        posting_title(analysis.job_title) or "",
+        analysis.company_name or "",
+    ]
     photo = load_photo_bytes(profile.personal.photo_path)
 
-    headline_misses = 0
     group_misses = 0
 
     def draft_cv(feedback: str | None) -> str:
-        nonlocal headline_misses, group_misses
+        nonlocal group_misses
         cv = tailor_cv(analysis, cv_profile, client=client, model=model, language=language, feedback=feedback)
-        headline = read_headline(cv)
         # The summary is the master CV's paragraph, untouched by humanize; the fact check
         # still reads it, since it runs on the whole CV.
         cv, summary = split_off_summary(cv)
@@ -157,39 +151,24 @@ def run_pipeline(
         cv = with_master_entry_intros(cv, cv_profile.master_cv_markdown)
         # And each entry's bullets: the master's set, in the model's order where it kept them.
         cv = with_master_bullets(cv, cv_profile.master_cv_markdown)
-        if headline_findings(headline, job_title=analysis.job_title, language=cv_language(cv)):
-            headline_misses += 1
-            # One retry for the headline; after that the discipline's default stands in for it
-            # rather than failing a CV whose only fault is its headline.
-            if headline_misses > 1:
-                logger.warning("The CV headline left the role list twice; using the default for %s", analysis.discipline)
-                headline = default_headline(analysis.discipline, cv_language(cv), analysis.job_title)
-        if headline:
-            cv = apply_position_headline(cv, headline)
-        cv = with_application_line(cv, analysis.job_title)
+        # Written in code from the analysis, after humanize, so nothing rewords it.
+        cv = apply_position_headline(cv, cv_headline(analysis.job_title, analysis.discipline, cv_language(cv)))
         if skill_group_findings(cv, cv_profile.master_cv_markdown):
             group_misses += 1
-            # Same bargain as the headline: one retry, then the master CV's groups as they stand.
+            # One retry for the groups; after that the master CV's groups stand in for them
+            # rather than failing a CV whose only fault is their grouping.
             if group_misses > 1:
                 logger.warning("The CV's skill groups left the master CV's twice; using the master's groups")
                 cv = with_master_skill_groups(cv, cv_profile.master_cv_markdown)
         return cv
 
     def check_cv_facts(cv: str) -> list[str]:
-        # The default is a listed headline by construction, so it is not held to the
-        # posting's role coming first.
-        headline = (
-            []
-            if headline_misses > 1
-            else headline_findings(read_headline(cv), job_title=analysis.job_title, language=cv_language(cv))
-        )
         groups = [] if group_misses > 1 else skill_group_findings(cv, cv_profile.master_cv_markdown)
-        # The application line is held to the analysis' title alone, not to the master CV.
         intros = entry_intro_findings(cv, cv_profile.master_cv_markdown) + education_findings(
             cv, cv_profile.master_cv_markdown
         )
-        return headline + groups + intros + application_line_findings(cv, analysis.job_title) + check_cv(
-            without_application_line(cv),
+        return groups + intros + check_cv(
+            cv,
             cv_profile.master_cv_markdown,
             posting_terms=posting_terms,
             allowed_text=allowed_text,
