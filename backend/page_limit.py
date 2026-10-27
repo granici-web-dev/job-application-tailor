@@ -24,6 +24,8 @@ MAX_CV_PAGES = 2
 MIN_MARGIN_MM = 15
 MIN_FONT_PT = 10
 FONT_STEP_PT = 0.5
+# The last step: bullets and paragraph text, with the headings left at their size.
+TEXT_PT = 9.5
 # Skill groups naming nothing the posting asks for go, down to this many groups.
 MIN_SKILL_GROUPS = 4
 
@@ -96,6 +98,7 @@ _LAYOUT_STEPS = (
         f"body font down to at least {MIN_FONT_PT} pt",
         lambda layout: replace(layout, font_pt=max(MIN_FONT_PT, layout.font_pt - FONT_STEP_PT)),
     ),
+    (f"bullets and paragraph text down to {TEXT_PT:g} pt", lambda layout: replace(layout, text_pt=TEXT_PT)),
 )
 
 
@@ -103,7 +106,7 @@ def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[
     """The CV shortened without the model until it fits MAX_CV_PAGES, or as far as allowed.
 
     One at a time, the skill groups that name none of `posting_terms`, down to
-    MIN_SKILL_GROUPS; then the layout, within its floors. Roles, bullets and projects are never
+    MIN_SKILL_GROUPS; then the layout, within its floors, the bullets' and paragraphs' font last. Roles, bullets and projects are never
     touched. A CV that still does not fit goes out as it is, with a warning: a third page is
     better than a stopped application.
     """
