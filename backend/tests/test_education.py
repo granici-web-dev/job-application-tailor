@@ -19,13 +19,7 @@ MASTER = """# Serghei Granici
 _09/2025 – 07/2026 (abgeschlossen)_
 
 - Tech-Stack: HTML, CSS, React.
-
-### Übersiedlung nach Deutschland und Spracherwerb
-
-_2016 – 2019_
-
-- Übersiedlung nach Deutschland 2016, Deutschkurse an der VHS (Zertifikat B1), danach Einzelunterricht bis B2
-- Erste Festanstellung in Deutschland 2019
+- Praktische Projekte mit React.
 
 ### Bachelor of Arts — Slawische Universität, Chisinau, Moldau
 
@@ -61,14 +55,14 @@ def test_a_dropped_entry_and_a_thinned_list_come_back_word_for_word():
     rebuilt = _round_trip(_cv(shortened))
 
     assert rebuilt == _cv(f"## Ausbildung\n\n{MASTER_EDUCATION}\n\n---\n\n")
-    assert "### Übersiedlung nach Deutschland und Spracherwerb" in rebuilt
+    assert "- Praktische Projekte mit React." in rebuilt
     assert education_findings(rebuilt, MASTER) == []
 
 
 def test_the_education_never_reaches_what_runs_in_between():
     rest, removed, following = split_off_education(_cv(f"## Ausbildung\n\n{MASTER_EDUCATION}\n\n---\n\n"))
 
-    assert "Ausbildung" not in rest and "Übersiedlung" not in rest
+    assert "Ausbildung" not in rest and "Weiterbildung" not in rest
     assert removed[0] == "## Ausbildung"
     assert following == "## Sprachen"
 
@@ -82,7 +76,7 @@ def test_a_cv_without_an_education_section_gets_the_masters_before_the_languages
 
 
 def test_an_education_section_off_the_master_is_reported():
-    reworded = _cv(f"## Ausbildung\n\n{MASTER_EDUCATION.replace('Erste Festanstellung', 'Erster Job')}\n\n")
+    reworded = _cv(f"## Ausbildung\n\n{MASTER_EDUCATION.replace('Praktische Projekte', 'Projekte')}\n\n")
 
     assert education_findings(reworded, MASTER) == [
         "The education section must be the master CV's, word for word: every entry and bullet, in its order."
