@@ -27,7 +27,7 @@ Length rules (hard limits):
 
 Content rules:
 - Copy the master CV's Profil section as it stands. It is replaced with the master CV's own paragraph afterwards, so any change you make there is discarded.
-- Open the document with the candidate's name as a level-1 heading. Do not write a headline or target-position line under it: the position applied for is inserted afterwards from the job analysis, and yours would be replaced.
+- Open the document with the candidate's name as a level-1 heading, followed by the headline the Headline section below describes.
 - Keep the named technologies the master CV lists for a degree or a training exactly as they are. Do not thin the list down: a named technology (for example a specific state-management library) is the only evidence behind the generic capability a posting asks for. An Emphasis section below may override this when the posting hires for the other discipline — where it does, follow it.
 - Include the candidate's contact details (name, email, and any phone, location, LinkedIn, GitHub, and languages provided) at the top and in the relevant sections. Do not drop provided contact details.
 - Reflect the candidate's languages in a Languages section.

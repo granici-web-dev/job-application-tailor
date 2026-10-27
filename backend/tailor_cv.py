@@ -9,6 +9,7 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.emphasis import emphasis_section
+from backend.headline import headline_section
 from backend.grounding import SKILL_HEADING, missing_required_skills, unsupported_skills
 from backend.llm import complete
 from backend.models import JobAnalysis
@@ -74,11 +75,11 @@ def tailor_cv(
     return retried
 
 
-def apply_position_headline(cv_markdown: str, job_title: str) -> str:
-    """Put the position being applied for directly under the name.
+def apply_position_headline(cv_markdown: str, headline: str) -> str:
+    """Put the headline directly under the name, replacing any the CV already has.
 
-    Taken from the job analysis rather than from the model, which otherwise writes whatever
-    headline it sees fit — sometimes the posting's title, sometimes the candidate's own.
+    Put back in code after humanize, which would otherwise reword a line the headline check
+    has already passed.
     """
     lines = cv_markdown.splitlines()
     heading = next((index for index, line in enumerate(lines) if NAME_HEADING.match(line)), None)
@@ -90,11 +91,11 @@ def apply_position_headline(cv_markdown: str, job_title: str) -> str:
     while tail and not tail[0].strip():
         tail.pop(0)
     if tail and HEADLINE_ONLY.match(tail[0]):
-        tail.pop(0)  # the model wrote its own headline; the job title replaces it
+        tail.pop(0)  # the headline already there gives way to the one passed in
     while tail and not tail[0].strip():
         tail.pop(0)
 
-    rebuilt = "\n".join(lines[: heading + 1] + ["", f"**{job_title}**", ""] + tail)
+    rebuilt = "\n".join(lines[: heading + 1] + ["", f"**{headline}**", ""] + tail)
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
 
 
@@ -327,6 +328,7 @@ def build_cv_prompt(
             "## Candidate contact details\n" + profile.personal.as_contact_lines(),
             "## Candidate master CV\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
+            headline_section(),
             *emphasis_section(analysis.discipline, kind="cv"),
         ]
     )

@@ -12,6 +12,7 @@ from backend.analyze import analyze_job
 from backend.errors import FactCheckError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text
+from backend.headline import cv_language, default_headline, headline_findings, read_headline
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
@@ -90,16 +91,35 @@ def run_pipeline(
     posting_names = [analysis.job_title or "", analysis.company_name or ""]
     photo = load_photo_bytes(profile.personal.photo_path)
 
+    headline_misses = 0
+
     def draft_cv(feedback: str | None) -> str:
+        nonlocal headline_misses
         cv = tailor_cv(analysis, profile, client=client, model=model, language=language, feedback=feedback)
+        headline = read_headline(cv)
         # The summary is the master CV's paragraph, untouched by humanize; the fact check
         # still reads it, since it runs on the whole CV.
         cv, summary = split_off_summary(cv)
         cv = humanize(cv, kind="cv", client=client, model=model)
-        return put_back_master_summary(cv, summary, profile.master_cv_markdown)
+        cv = put_back_master_summary(cv, summary, profile.master_cv_markdown)
+        if headline_findings(headline, job_title=analysis.job_title, language=cv_language(cv)):
+            headline_misses += 1
+            # One retry for the headline; after that the discipline's default stands in for it
+            # rather than failing a CV whose only fault is its headline.
+            if headline_misses > 1:
+                logger.warning("The CV headline left the role list twice; using the default for %s", analysis.discipline)
+                headline = default_headline(analysis.discipline, cv_language(cv))
+        return apply_position_headline(cv, headline) if headline else cv
 
     def check_cv_facts(cv: str) -> list[str]:
-        return check_cv(
+        # The default is a listed headline by construction, so it is not held to the
+        # posting's role coming first.
+        headline = (
+            []
+            if headline_misses > 1
+            else headline_findings(read_headline(cv), job_title=analysis.job_title, language=cv_language(cv))
+        )
+        return headline + check_cv(
             cv,
             profile.master_cv_markdown,
             posting_terms=posting_terms,
@@ -108,7 +128,6 @@ def run_pipeline(
         )
 
     def finish_cv(cv: str) -> str:
-        cv = apply_position_headline(cv, analysis.job_title)
         # After humanize, which rejects a candidate whose headings moved — including ours.
         return move_skills_after_experience(cv)
 

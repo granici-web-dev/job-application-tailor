@@ -33,7 +33,7 @@ def _message(text):
     return SimpleNamespace(content=[SimpleNamespace(type="text", text=text)])
 
 
-CV_MARKDOWN = "# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
+CV_MARKDOWN = "# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
 LETTER_JSON = json.dumps(
     {
         "salutation": "Dear Hiring Team,",
@@ -89,7 +89,7 @@ def test_run_pipeline_writes_pdfs_drafts_and_tracker_row(tmp_path):
     assert sheet["C2"].value == "https://example.com/jobs/1"
 
     text = "\n".join(p.extract_text() for p in pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages)
-    assert "Senior Backend Engineer" in text
+    assert "Design Engineer · Full-Stack Developer" in text
 
 
 def test_run_pipeline_collision_creates_suffixed_dir(tmp_path):
@@ -167,7 +167,7 @@ def test_run_pipeline_without_photo_file_succeeds(tmp_path):
 def test_education_stays_below_experience_on_an_engineering_posting(tmp_path):
     analysis = json.dumps({**json.loads(ANALYSIS_JSON), "discipline": "engineering"})
     cv = (
-        "# Ivan Petrov\n\n## Profil\nBackend Engineer.\n\n"
+        "# Ivan Petrov\n\n**Design Engineer · Fullstack-Entwickler**\n\n## Profil\nBackend Engineer.\n\n"
         "## Berufserfahrung\n- Python, FastAPI\n\n## Ausbildung\n- Weiterbildung\n"
     )
     client = Mock()
@@ -194,6 +194,8 @@ def test_education_stays_below_experience_on_an_engineering_posting(tmp_path):
 
 
 SHORT_MASTER = """# Ivan Petrov
+
+**Design Engineer · Full-Stack Developer**
 
 ## Summary
 Backend engineer.
@@ -360,3 +362,32 @@ def test_the_summary_is_the_master_paragraph_and_never_reaches_humanize(tmp_path
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert "## Summary\n\nBackend engineer.\n" in draft
     assert "production" not in draft
+
+
+def test_a_headline_off_the_role_list_twice_falls_back_to_the_default(tmp_path):
+    off_list = SHORT_MASTER.replace(
+        "**Design Engineer · Full-Stack Developer**", "**Solution Architect · AI Engineer**"
+    )
+    client = _client_returning(off_list, off_list, off_list, off_list, LETTER_JSON)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    assert "'Solution Architect' is not on the allowed list" in _user_messages(client)[3]
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "Solution Architect" not in draft
+    assert draft.startswith("# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n")
+
+
+def test_a_headline_fixed_on_the_retry_is_kept(tmp_path):
+    off_list = SHORT_MASTER.replace(
+        "**Design Engineer · Full-Stack Developer**", "**Solution Architect · AI Engineer**"
+    )
+    fixed = SHORT_MASTER.replace(
+        "**Design Engineer · Full-Stack Developer**", "**AI Engineer · Full-Stack Developer**"
+    )
+    client = _client_returning(off_list, off_list, fixed, fixed, LETTER_JSON)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert draft.startswith("# Ivan Petrov\n\n**AI Engineer · Full-Stack Developer**\n")

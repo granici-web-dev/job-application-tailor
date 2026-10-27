@@ -32,7 +32,7 @@ ANALYSIS_JSON = json.dumps(
         "keywords": ["Python"],
     }
 )
-CV_MARKDOWN = "# Ivan Petrov\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
+CV_MARKDOWN = "# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\n## Summary\nSenior Backend Engineer with Python and FastAPI."
 LETTER_JSON = json.dumps(
     {
         "salutation": "Dear Hiring Team,",
