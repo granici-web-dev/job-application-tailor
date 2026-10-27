@@ -451,7 +451,7 @@ UNSOLICITED_JSON = json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initia
 UNSOLICITED_LETTER_JSON = json.dumps(
     {
         **json.loads(LETTER_JSON),
-        "intro": "Ich bewerbe mich initiativ als Senior Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
+        "intro": "ich bewerbe mich initiativ als Senior Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
     }
 )
 
@@ -507,7 +507,7 @@ def test_an_unsolicited_letter_gets_the_company_page_and_its_opening_is_checked(
         _message(vacancy), _message(vacancy), _message(vacancy),
     ]
 
-    with pytest.raises(FactCheckError, match="Ich bewerbe mich initiativ als Backend Engineer bei Acme GmbH"):
+    with pytest.raises(FactCheckError, match="ich bewerbe mich initiativ als Backend Engineer bei Acme GmbH"):
         run_pipeline(
             job_url="https://example.com/jobs/1",
             job_text="Initiativbewerbung bei Acme GmbH. Wir bauen Software für Banken.",

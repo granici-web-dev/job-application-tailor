@@ -350,7 +350,7 @@ def _letter_opening(intro):
 
 def test_an_unsolicited_opening_that_speaks_of_the_company_passes():
     letter = _letter_opening(
-        "Ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
+        "ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
         "Die Agentur entwickelt Webanwendungen und Portale für den Mittelstand."
     )
 
@@ -365,7 +365,7 @@ def test_an_unsolicited_opening_that_reads_as_a_vacancy_is_caught():
     )
 
     assert unsolicited_intro_findings(letter, UNSOLICITED) == [
-        "The opening paragraph must begin with 'Ich bewerbe mich initiativ als Fullstack-Entwickler bei "
+        "The opening paragraph must begin with 'ich bewerbe mich initiativ als Fullstack-Entwickler bei "
         "Lichtwerk Digital GmbH'.",
         "The opening paragraph says 'Ausschreibung'. This is an unsolicited application: there is no "
         "vacancy, so Stelle, Ausschreibung and Position never appear in it.",
@@ -374,9 +374,21 @@ def test_an_unsolicited_opening_that_reads_as_a_vacancy_is_caught():
     ]
 
 
-def test_a_vacancy_word_inside_a_compound_is_caught_too():
+def test_an_opening_with_a_capital_ich_after_the_salutation_is_caught():
     letter = _letter_opening(
         "Ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
+        "Die Agentur entwickelt Webanwendungen."
+    )
+
+    assert unsolicited_intro_findings(letter, UNSOLICITED) == [
+        "The opening paragraph must begin with 'ich bewerbe mich initiativ als Fullstack-Entwickler bei "
+        "Lichtwerk Digital GmbH'."
+    ]
+
+
+def test_a_vacancy_word_inside_a_compound_is_caught_too():
+    letter = _letter_opening(
+        "ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
         "Eine Stellenanzeige habe ich nicht gefunden, die Positionen sind besetzt."
     )
 
@@ -398,5 +410,5 @@ def test_the_unsolicited_prompt_carries_the_opening_and_the_company_page():
     _, unsolicited = build_letter_prompt(UNSOLICITED, profile, template, "Wir sind eine Digitalagentur in Köln.")
 
     assert "## Unsolicited application" not in plain
-    assert "'Ich bewerbe mich initiativ als Fullstack-Entwickler bei Lichtwerk Digital GmbH'" in unsolicited
+    assert "'ich bewerbe mich initiativ als Fullstack-Entwickler bei Lichtwerk Digital GmbH'" in unsolicited
     assert "## The company's page\nWir sind eine Digitalagentur in Köln." in unsolicited

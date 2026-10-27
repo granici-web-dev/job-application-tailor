@@ -215,10 +215,10 @@ def unsolicited_intro_findings(letter: str, analysis: JobAnalysis) -> list[str]:
     if len(paragraphs) < 2:
         return []
     intro = paragraphs[1]
-    opening = f"Ich bewerbe mich initiativ als {analysis.job_title} bei {analysis.company_name}"
+    opening = f"ich bewerbe mich initiativ als {analysis.job_title} bei {analysis.company_name}"
     findings: list[str] = []
     if not re.match(
-        rf"Ich bewerbe mich initiativ als {re.escape(analysis.job_title)} bei (?:der |dem )?"
+        rf"ich bewerbe mich initiativ als {re.escape(analysis.job_title)} bei (?:der |dem )?"
         rf"{re.escape(analysis.company_name)}",
         intro,
     ):
@@ -345,9 +345,9 @@ def _unsolicited_sections(analysis: JobAnalysis, company_page: str) -> list[str]
         "## Unsolicited application\n"
         "The page names no position: the candidate applies on their own initiative, as "
         f"{analysis.job_title}. This overrides the rules for the intro above. Its first sentence "
-        f"begins word for word with 'Ich bewerbe mich initiativ als {analysis.job_title} bei "
-        f"{analysis.company_name}' (an article before the company name where German needs one, "
-        "'bei der …'). Its second sentence is about the company — what it does, taken from its page "
+        f"begins word for word with 'ich bewerbe mich initiativ als {analysis.job_title} bei "
+        f"{analysis.company_name}', in lower case after the salutation's comma (an article before "
+        "the company name where German needs one, 'bei der …'). Its second sentence is about the company — what it does, taken from its page "
         "below — and not about a vacancy or about the candidate; in that sentence you may use the "
         "page's own words. The words Stelle, Ausschreibung and Position never appear in the intro.",
         "## The company's page\n" + company_page,

@@ -341,7 +341,7 @@ def test_a_position_entered_by_hand_goes_to_the_pipeline(client):
             json.dumps(
                 {
                     **json.loads(LETTER_JSON),
-                    "intro": "Ich bewerbe mich initiativ als Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
+                    "intro": "ich bewerbe mich initiativ als Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
                 }
             )
         ),
