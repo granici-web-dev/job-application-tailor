@@ -13,7 +13,7 @@ from backend.errors import FactCheckError, JobAnalysisError, JobTextMissingError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text, job_board_posting
 from backend.grounding import skill_group_findings, with_master_skill_groups
-from backend.headline import cv_headline, cv_language, position_name, posting_title
+from backend.headline import cv_headline, cv_language, position_name
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
@@ -136,13 +136,8 @@ def run_pipeline(
         [profile.personal.as_contact_lines(), analysis.job_title or "", analysis.company_name or ""]
     )
     # A posting term inside these is the posting quoted, not a skill claimed.
-    # Its form without the gender marker and the level too: the headline quotes it so.
-    posting_names = [
-        analysis.job_title or "",
-        position_name(analysis.job_title),
-        posting_title(analysis.job_title) or "",
-        analysis.company_name or "",
-    ]
+    # Its form without the gender marker: the headline quotes it so.
+    posting_names = [analysis.job_title or "", position_name(analysis.job_title), analysis.company_name or ""]
     photo = load_photo_bytes(profile.personal.photo_path)
 
     group_misses = 0

@@ -360,7 +360,7 @@ def test_the_headline_is_set_in_code_whatever_the_model_writes(tmp_path):
     assert draft.startswith("# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\n## Summary")
 
 
-def test_a_title_with_a_listed_role_is_the_headline_without_its_level(tmp_path):
+def test_a_title_with_a_listed_role_is_the_headline_as_the_posting_writes_it(tmp_path):
     analysis = json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Senior Frontend Developer (m/w/d) React"})
     client = Mock()
     client.messages.create.side_effect = [
@@ -370,7 +370,7 @@ def test_a_title_with_a_listed_role_is_the_headline_without_its_level(tmp_path):
     result = _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert draft.startswith("# Ivan Petrov\n\n**Frontend Developer React**\n\n## Summary")
+    assert draft.startswith("# Ivan Petrov\n\n**Senior Frontend Developer React**\n\n## Summary")
     assert "Application for" not in draft
 
 
@@ -510,7 +510,7 @@ def test_a_position_entered_by_hand_gives_the_headline_by_the_same_rule(tmp_path
     )
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert draft.startswith("# Ivan Petrov\n\n**Frontend Developer**\n\n## Summary")
+    assert draft.startswith("# Ivan Petrov\n\n**Junior Frontend Developer**\n\n## Summary")
 
 
 def test_an_unsolicited_letter_gets_the_company_page_and_its_opening_is_checked(tmp_path):

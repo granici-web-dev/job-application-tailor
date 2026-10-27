@@ -6,21 +6,15 @@ from backend.headline import cv_headline, cv_language, default_headline, positio
 @pytest.mark.parametrize(
     ("job_title", "headline"),
     [
-        ("(Junior) Fullstack Developer", "Fullstack Developer"),
+        ("(Junior) Fullstack Developer (m/w/d)", "(Junior) Fullstack Developer"),
         ("Senior UX Designer", "Senior UX Designer"),
-        ("Senior Frontend Developer React", "Frontend Developer React"),
-        ("Senior Frontend Developer (m/w/d) React", "Frontend Developer React"),
-        ("Junior Frontend-Entwickler (w/m/d)", "Frontend-Entwickler"),
-        ("Frontend Developer (Senior) (all genders)", "Frontend Developer"),
-        ("Werkstudent*in UX Designer (m/w/d)", "UX Designer"),
-        ("Praktikant – Product Designer", "Product Designer"),
-        ("Lead Product Designer", "Product Designer"),
-        ("Head of Business Analyst", "Business Analyst"),
-        ("Mid-Level AI Engineer", "AI Engineer"),
+        ("Senior Frontend Developer (m/w/d) React", "Senior Frontend Developer React"),
+        ("Werkstudent*in UX Designer (all genders)", "Werkstudent*in UX Designer"),
+        ("Lead Product Designer (w/m/d)", "Lead Product Designer"),
         ("Fullstack-Entwickler", "Fullstack-Entwickler"),
     ],
 )
-def test_a_title_with_a_listed_role_is_the_headline_without_level_or_marker(job_title, headline):
+def test_a_title_with_a_listed_role_is_the_headline_as_the_posting_writes_it(job_title, headline):
     assert cv_headline(job_title, "engineering", "de") == headline
 
 
