@@ -11,11 +11,14 @@ from backend.profile import PersonalInfo, Profile
 from backend.tailor_letter import (
     assemble_letter,
     build_letterhead,
+    build_letter_prompt,
     changed_sentence_findings,
+    company_sentence,
     parse_letter_template,
     restore_template_paragraph,
     tailor_letter,
     template_findings,
+    unsolicited_intro_findings,
 )
 
 GERMAN_BODY = "Sehr geehrte Damen und Herren,\n\nText.\n\nMit freundlichen Grüßen\nSerghei Granici"
@@ -336,3 +339,64 @@ def test_the_template_paragraph_can_be_put_back():
     restored = restore_template_paragraph(letter, parse_letter_template(TEMPLATE), _analysis())
 
     assert restored == _letter()
+
+
+UNSOLICITED = _analysis(job_title="Fullstack-Entwickler", company_name="Lichtwerk Digital GmbH")
+
+
+def _letter_opening(intro):
+    return f"Sehr geehrte Frau Weber,\n\n{intro}\n\nAktuell verantworte ich Projekte.\n\nMit freundlichen Grüßen\nSerghei Granici"
+
+
+def test_an_unsolicited_opening_that_speaks_of_the_company_passes():
+    letter = _letter_opening(
+        "Ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
+        "Die Agentur entwickelt Webanwendungen und Portale für den Mittelstand."
+    )
+
+    assert unsolicited_intro_findings(letter, UNSOLICITED) == []
+    assert company_sentence(letter) == "Die Agentur entwickelt Webanwendungen und Portale für den Mittelstand."
+
+
+def test_an_unsolicited_opening_that_reads_as_a_vacancy_is_caught():
+    letter = _letter_opening(
+        "die Stelle als Fullstack-Entwickler bei der Lichtwerk Digital GmbH reizt mich. "
+        "Die Ausschreibung verbindet Frontend und Backend."
+    )
+
+    assert unsolicited_intro_findings(letter, UNSOLICITED) == [
+        "The opening paragraph must begin with 'Ich bewerbe mich initiativ als Fullstack-Entwickler bei "
+        "Lichtwerk Digital GmbH'.",
+        "The opening paragraph says 'Ausschreibung'. This is an unsolicited application: there is no "
+        "vacancy, so Stelle, Ausschreibung and Position never appear in it.",
+        "The opening paragraph says 'Stelle'. This is an unsolicited application: there is no "
+        "vacancy, so Stelle, Ausschreibung and Position never appear in it.",
+    ]
+
+
+def test_a_vacancy_word_inside_a_compound_is_caught_too():
+    letter = _letter_opening(
+        "Ich bewerbe mich initiativ als Fullstack-Entwickler bei der Lichtwerk Digital GmbH. "
+        "Eine Stellenanzeige habe ich nicht gefunden, die Positionen sind besetzt."
+    )
+
+    assert [finding.split("'")[1] for finding in unsolicited_intro_findings(letter, UNSOLICITED)] == [
+        "Positionen",
+        "Stellenanzeige",
+    ]
+
+
+def test_the_unsolicited_prompt_carries_the_opening_and_the_company_page():
+    profile = Profile(
+        personal=PERSONAL,
+        master_cv_markdown="# Serghei Granici\n\n## Kenntnisse\n\n- **Frontend:** React\n",
+        cover_letter_template=TEMPLATE,
+    )
+    template = parse_letter_template(TEMPLATE)
+
+    _, plain = build_letter_prompt(UNSOLICITED, profile, template)
+    _, unsolicited = build_letter_prompt(UNSOLICITED, profile, template, "Wir sind eine Digitalagentur in Köln.")
+
+    assert "## Unsolicited application" not in plain
+    assert "'Ich bewerbe mich initiativ als Fullstack-Entwickler bei Lichtwerk Digital GmbH'" in unsolicited
+    assert "## The company's page\nWir sind eine Digitalagentur in Köln." in unsolicited

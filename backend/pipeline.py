@@ -46,8 +46,10 @@ from backend.tailor_letter import (
     changed_sentence_findings,
     parse_letter_template,
     restore_template_paragraph,
+    company_sentence,
     tailor_letter,
     template_findings,
+    unsolicited_intro_findings,
     with_project_sentence,
 )
 from backend.tracker import append_application
@@ -89,6 +91,8 @@ def run_pipeline(
 
     logger.info("Analyzing job posting")
     analysis = analyze_job(job_text, client=client, model=model)
+    # A position entered by hand for a posting that names none: an unsolicited application.
+    unsolicited = bool(job_title and job_title.strip()) and not names_a_position(analysis.job_title)
     if job_title and job_title.strip():
         analysis = replace(analysis, job_title=job_title.strip())
     elif not names_a_position(analysis.job_title):
@@ -198,7 +202,14 @@ def run_pipeline(
 
     def draft_letter(feedback: str | None) -> str:
         nonlocal sentence_misses
-        letter = tailor_letter(analysis, profile, client=client, model=model, feedback=feedback)
+        letter = tailor_letter(
+            analysis,
+            profile,
+            client=client,
+            model=model,
+            feedback=feedback,
+            company_page=job_text if unsolicited else None,
+        )
         if changed_sentence_findings(letter, letter_template, analysis):
             sentence_misses += 1
             # One retry for the changed sentence; after that the template's own paragraph
@@ -209,14 +220,17 @@ def run_pipeline(
         return letter
 
     def check_letter_body(letter: str) -> list[str]:
+        opening = unsolicited_intro_findings(letter, analysis) if unsolicited else []
+        # In an unsolicited application the opening's second sentence quotes the company's page.
+        names = posting_names + [company_sentence(letter)] if unsolicited else posting_names
         return template_findings(letter, letter_template, analysis) + changed_sentence_findings(
             letter, letter_template, analysis
-        ) + check_letter(
+        ) + opening + check_letter(
             letter,
             profile.master_cv_markdown,
             posting_terms=posting_terms,
             allowed_text=allowed_text,
-            posting_names=posting_names,
+            posting_names=names,
         )
 
     cover_letter_markdown = _fact_checked(draft_letter, check_letter_body, kind="cover letter")

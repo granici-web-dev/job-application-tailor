@@ -448,6 +448,12 @@ def test_the_letter_project_paragraph_is_the_sentence_of_the_discipline_project(
 
 
 UNSOLICITED_JSON = json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initiativbewerbung"})
+UNSOLICITED_LETTER_JSON = json.dumps(
+    {
+        **json.loads(LETTER_JSON),
+        "intro": "Ich bewerbe mich initiativ als Senior Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
+    }
+)
 
 
 @pytest.mark.parametrize("analysis", [UNSOLICITED_JSON, json.dumps({**json.loads(ANALYSIS_JSON), "job_title": None})])
@@ -465,7 +471,7 @@ def test_a_posting_without_a_position_stops_before_tailoring(tmp_path, analysis)
 def test_a_position_entered_by_hand_replaces_the_missing_one(tmp_path):
     client = Mock()
     client.messages.create.side_effect = [
-        _message(UNSOLICITED_JSON), _message(CV_MARKDOWN), _message(CV_MARKDOWN), _message(LETTER_JSON)
+        _message(UNSOLICITED_JSON), _message(CV_MARKDOWN), _message(CV_MARKDOWN), _message(UNSOLICITED_LETTER_JSON)
     ]
 
     result = run_pipeline(
@@ -491,3 +497,38 @@ def test_the_cv_names_the_posting_position_under_the_headline(tmp_path):
     assert draft.startswith(
         "# Ivan Petrov\n\n**Design Engineer · Full-Stack Developer**\n\nApplication for: Senior Backend Engineer\n"
     )
+
+
+def test_an_unsolicited_letter_gets_the_company_page_and_its_opening_is_checked(tmp_path):
+    vacancy = json.dumps({**json.loads(LETTER_JSON), "intro": "The Stelle at Acme GmbH is interesting."})
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(UNSOLICITED_JSON), _message(CV_MARKDOWN), _message(CV_MARKDOWN),
+        _message(vacancy), _message(vacancy), _message(vacancy),
+    ]
+
+    with pytest.raises(FactCheckError, match="Ich bewerbe mich initiativ als Backend Engineer bei Acme GmbH"):
+        run_pipeline(
+            job_url="https://example.com/jobs/1",
+            job_text="Initiativbewerbung bei Acme GmbH. Wir bauen Software für Banken.",
+            output_dir=tmp_path,
+            profile_dir=PROFILE_DIR,
+            client=client,
+            model="claude-sonnet-4-6",
+            language=None,
+            today=date(2026, 6, 1),
+            job_title="Backend Engineer",
+        )
+
+    letter_request = _user_messages(client)[3]
+    assert "## Unsolicited application" in letter_request
+    assert "Wir bauen Software für Banken." in letter_request
+    assert "'Stelle'" in _user_messages(client)[4]
+
+
+def test_a_posting_with_its_own_position_gets_no_unsolicited_opening(tmp_path):
+    client = _client_returning(SHORT_MASTER, SHORT_MASTER, LETTER_JSON)
+
+    _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
+
+    assert "## Unsolicited application" not in _user_messages(client)[3]

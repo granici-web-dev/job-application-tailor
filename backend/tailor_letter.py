@@ -34,6 +34,8 @@ POSTCODE = re.compile(r"^\d{4,6}\s+")
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.DOTALL)
 PLACEHOLDER = re.compile(r"\[[A-ZÄÖÜ][^\]]*\]")
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])")
+# A word that presumes a vacancy, also as the head of a compound ("Stellenanzeige").
+VACANCY_WORD = re.compile(r"(?<!\w)(?:stelle|ausschreibung|position)\w*", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -95,15 +97,18 @@ def tailor_letter(
     client: Anthropic,
     model: str,
     feedback: str | None = None,
+    company_page: str | None = None,
 ) -> str:
     """The letter body, salutation to signature, assembled around the model's three parts.
 
     The model writes the salutation, the opening and the adjusted paragraph; every other
     paragraph comes from the template untouched. `feedback` carries what the pipeline found
-    wrong with the previous attempt.
+    wrong with the previous attempt. `company_page` is the page's text when the application is
+    unsolicited — the position entered by hand, none in the posting — and the opening then
+    speaks of the company instead of a vacancy.
     """
     template = parse_letter_template(profile.cover_letter_template)
-    system_prompt, user_message = build_letter_prompt(analysis, profile, template)
+    system_prompt, user_message = build_letter_prompt(analysis, profile, template, company_page)
     if feedback:
         user_message += "\n\n" + feedback
     raw = complete(client, model=model, system=system_prompt, user=user_message, max_tokens=MAX_TOKENS)
@@ -204,6 +209,37 @@ def changed_sentence_findings(letter: str, template: LetterTemplate, analysis: J
     return findings
 
 
+def unsolicited_intro_findings(letter: str, analysis: JobAnalysis) -> list[str]:
+    """Where the opening of an unsolicited application reads as an answer to a vacancy."""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
+    if len(paragraphs) < 2:
+        return []
+    intro = paragraphs[1]
+    opening = f"Ich bewerbe mich initiativ als {analysis.job_title} bei {analysis.company_name}"
+    findings: list[str] = []
+    if not re.match(
+        rf"Ich bewerbe mich initiativ als {re.escape(analysis.job_title)} bei (?:der |dem )?"
+        rf"{re.escape(analysis.company_name)}",
+        intro,
+    ):
+        findings.append(f"The opening paragraph must begin with '{opening}'.")
+    # The title and the company are the analysis' words, not the model's.
+    rest = intro.replace(analysis.job_title, " ").replace(analysis.company_name, " ")
+    for word in sorted({match.group(0) for match in VACANCY_WORD.finditer(rest)}):
+        findings.append(
+            f"The opening paragraph says '{word}'. This is an unsolicited application: there is no "
+            "vacancy, so Stelle, Ausschreibung and Position never appear in it."
+        )
+    return findings
+
+
+def company_sentence(letter: str) -> str:
+    """The opening's second sentence: in an unsolicited application, what the company does."""
+    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
+    sentences = _sentences(paragraphs[1]) if len(paragraphs) > 1 else []
+    return sentences[1] if len(sentences) > 1 else ""
+
+
 def restore_template_paragraph(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> str:
     """The letter with the adjustable paragraph put back exactly as the template has it."""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
@@ -279,7 +315,7 @@ def _sender_city(location: str | None) -> str | None:
 
 
 def build_letter_prompt(
-    analysis: JobAnalysis, profile: Profile, template: LetterTemplate
+    analysis: JobAnalysis, profile: Profile, template: LetterTemplate, company_page: str | None = None
 ) -> tuple[str, str]:
     system_prompt = LETTER_PROMPT_PATH.read_text(encoding="utf-8")
     fixed = [fill_placeholders(p, analysis) for p in template.fixed] + [template.signature]
@@ -298,6 +334,21 @@ def build_letter_prompt(
             + "\n".join(f"- {line}" for line in skill_wording(profile.master_cv_markdown)),
             "## Candidate master CV (the only source of facts)\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
+            *(_unsolicited_sections(analysis, company_page) if company_page is not None else []),
         ]
     )
     return system_prompt, user_message
+
+
+def _unsolicited_sections(analysis: JobAnalysis, company_page: str) -> list[str]:
+    return [
+        "## Unsolicited application\n"
+        "The page names no position: the candidate applies on their own initiative, as "
+        f"{analysis.job_title}. This overrides the rules for the intro above. Its first sentence "
+        f"begins word for word with 'Ich bewerbe mich initiativ als {analysis.job_title} bei "
+        f"{analysis.company_name}' (an article before the company name where German needs one, "
+        "'bei der …'). Its second sentence is about the company — what it does, taken from its page "
+        "below — and not about a vacancy or about the candidate; in that sentence you may use the "
+        "page's own words. The words Stelle, Ausschreibung and Position never appear in the intro.",
+        "## The company's page\n" + company_page,
+    ]

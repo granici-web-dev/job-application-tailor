@@ -337,7 +337,14 @@ def test_a_position_entered_by_hand_goes_to_the_pipeline(client):
         _message(json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initiativbewerbung"})),
         _message(CV_MARKDOWN),
         _message(CV_MARKDOWN),
-        _message(LETTER_JSON),
+        _message(
+            json.dumps(
+                {
+                    **json.loads(LETTER_JSON),
+                    "intro": "Ich bewerbe mich initiativ als Backend Engineer bei der Acme GmbH. Acme GmbH builds software.",
+                }
+            )
+        ),
     ]
     app.dependency_overrides[get_anthropic_client] = lambda: fake
 

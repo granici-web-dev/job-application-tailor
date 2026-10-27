@@ -396,3 +396,16 @@ def test_the_head_of_a_project_compound_alone_does_not_mention_the_project():
     )
 
     assert check_cv(master, master, posting_terms=[]) == []
+
+
+def test_posting_terms_in_the_company_sentence_of_an_unsolicited_letter_pass():
+    sentence = "Die Kontor Plattform Services GmbH sorgt für Barrierefreiheit in digitalen Plattformen."
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "ich bewerbe mich initiativ. " + sentence,
+    )
+
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=[*BA_NAMES, sentence]) == []
+    assert "'Barrierefreiheit' does not appear in the master CV." in check_letter(
+        letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES
+    )
