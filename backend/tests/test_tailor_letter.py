@@ -445,3 +445,62 @@ def test_the_unsolicited_prompt_carries_the_opening_and_the_company_page():
     assert "## Unsolicited application" not in plain
     assert "'ich bewerbe mich initiativ als Fullstack-Entwickler bei Lichtwerk Digital GmbH'" in unsolicited
     assert "## The company's page\nWir sind eine Digitalagentur in Köln." in unsolicited
+
+
+PLACEMENT_MASTER = """# Serghei Granici
+
+## Kenntnisse
+
+- **Qualität:** Cognitive Walkthrough, Accessibility (WCAG 2.2 AA)
+- **AI & Tools:** Claude Code
+
+## Berufserfahrung
+
+### Product Designer — CorLab (Praktikum)
+
+_05/2026 – heute_
+
+**Verwaltungssystem für eine staatliche Stelle (Moldau):**
+
+- Cognitive Walkthrough und WCAG-2.2-AA-Audit vor der Umsetzung
+
+**Bestehendes System (Moldau) – Audit und Redesign:**
+
+- UX/UI-Audit: 48 Befunde
+"""
+WCAG = "Dabei habe ich einen WCAG-2.2-AA-Audit durchgeführt."
+
+
+def _placement(adjusted):
+    return changed_sentence_findings(
+        _letter(adjusted=adjusted), parse_letter_template(TEMPLATE), _analysis(), PLACEMENT_MASTER
+    )
+
+
+def test_an_added_sentence_after_its_own_system_passes():
+    after_first_system = CORLAB.replace("Verwaltungssystem. Ein", f"Verwaltungssystem. {WCAG} Ein")
+
+    assert _placement(after_first_system) == []
+
+
+def test_an_added_sentence_after_another_system_is_caught():
+    assert _placement(CORLAB + " " + WCAG) == [
+        f"The sentence you added, '{WCAG}', is about the system 'Verwaltungssystem für eine staatliche "
+        "Stelle (Moldau)', so it goes directly after the template's sentence 'Für eine staatliche Stelle "
+        "entwerfe ich ein Verwaltungssystem.'."
+    ]
+
+
+def test_a_sentence_about_no_one_system_goes_after_the_first_sentence():
+    general = "Dabei arbeite ich durchgängig mit Claude Code."
+    after_first = CORLAB.replace("selbst. Für", f"selbst. {general} Für")
+
+    assert _placement(after_first) == []
+    assert _placement(CORLAB + " " + general)[0].endswith(
+        "is about the position as a whole, so it goes directly after the template's sentence "
+        "'Aktuell verantworte ich bei CorLab Projekte komplett selbst.'."
+    )
+
+
+def test_without_an_added_sentence_there_is_nothing_to_place():
+    assert _placement(CORLAB) == []

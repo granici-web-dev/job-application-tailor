@@ -303,6 +303,33 @@ class _Findings:
         return "; ".join(places) if places else "its summary or skills section"
 
 
+def sentence_unit(sentence: str, context: str, master_markdown: str) -> str | None:
+    """The unit of the entry `context` names that `sentence` is about, or None.
+
+    By name first ("Für eine Arztpraxis …" names the Arztpraxis system), else by its facts:
+    the one unit whose text holds every number and skill the sentence states. A sentence that
+    names or fits none, or fits several, is about the entry as a whole.
+    """
+    master = _read_master(master_markdown)
+    entry = next(iter(_mentioned(context, master.entries)), None)
+    if entry is None or not entry.units:
+        return None
+    named = _mentioned_units(sentence, entry)
+    if len(named) == 1:
+        return named[0].name
+    text = _with_digits(sentence)
+    numbers = _numbers(text)
+    terms = [term for term in master.terms if _occurs(term, text)]
+    if not numbers and not terms:
+        return None
+    holders = [
+        unit
+        for unit in entry.units
+        if numbers <= _numbers(_with_digits(unit.text)) and all(_occurs(term, unit.text) for term in terms)
+    ]
+    return holders[0].name if len(holders) == 1 else None
+
+
 def _read_master(master_markdown: str) -> _Master:
     raw: list[tuple[str, str, list[str]]] = []
     for section, lines in _sections(master_markdown):

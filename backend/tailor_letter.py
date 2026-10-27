@@ -11,6 +11,7 @@ from anthropic import Anthropic
 
 from backend.analyze import _strip_json_fences
 from backend.errors import LLMError, ProfileError
+from backend.factcheck import sentence_unit
 from backend.grounding import skill_wording
 from backend.llm import complete
 from backend.models import JobAnalysis
@@ -192,11 +193,17 @@ def template_findings(letter: str, template: LetterTemplate, analysis: JobAnalys
     return findings
 
 
-def changed_sentence_findings(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> list[str]:
-    """Where the sentence the model changed in the adjustable paragraph is too long or interrupted.
+def changed_sentence_findings(
+    letter: str, template: LetterTemplate, analysis: JobAnalysis, master_markdown: str | None = None
+) -> list[str]:
+    """Where the sentence the model added to the adjustable paragraph is too long, interrupted
+    or out of place.
 
     Kept apart from template_findings because a miss here has a safe way out: the template's
-    own paragraph, which the pipeline falls back to instead of failing the letter.
+    own paragraph, which the pipeline falls back to instead of failing the letter. With the
+    master CV, the added sentence is also held to its place: directly after the template's
+    sentence about the system it speaks of, or after the first sentence when it speaks of
+    all or none of them.
     """
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
     if len(paragraphs) < 3:
@@ -217,7 +224,35 @@ def changed_sentence_findings(letter: str, template: LetterTemplate, analysis: J
                 f"The sentence you changed in the paragraph starting '{_start(template.adjustable)}' "
                 "sets off an insertion with a dash. Write it without one."
             )
+    if master_markdown is not None:
+        findings += _placement_findings(paragraphs[2], template, analysis, master_markdown)
     return findings
+
+
+def _placement_findings(
+    paragraph: str, template: LetterTemplate, analysis: JobAnalysis, master_markdown: str
+) -> list[str]:
+    template_sentences = _sentences(fill_placeholders(template.adjustable, analysis))
+    squashed = {_squashed(s) for s in template_sentences}
+    sentences = _sentences(paragraph)
+    added = [index for index, sentence in enumerate(sentences) if _squashed(sentence) not in squashed]
+    if len(added) != 1 or not template_sentences:
+        return []  # none to place, or more than one: template_findings reports that
+    context = template_sentences[0]
+    systems = [(s, sentence_unit(s, context, master_markdown)) for s in template_sentences[1:]]
+    if not any(unit for _, unit in systems):
+        return []  # a position without systems: the added sentence may go anywhere
+    index = added[0]
+    sentence = sentences[index]
+    home = sentence_unit(sentence, context, master_markdown)
+    anchor = next((s for s, unit in systems if home and unit == home), context)
+    if index > 0 and _squashed(sentences[index - 1]) == _squashed(anchor):
+        return []
+    about = f"the system '{home}'" if anchor is not context else "the position as a whole"
+    return [
+        f"The sentence you added, '{sentence.strip()}', is about {about}, so it goes directly after "
+        f"the template's sentence '{anchor.strip()}'."
+    ]
 
 
 def unsolicited_intro_findings(letter: str, analysis: JobAnalysis) -> list[str]:

@@ -212,7 +212,7 @@ def run_pipeline(
             feedback=feedback,
             company_page=job_text if unsolicited else None,
         )
-        if changed_sentence_findings(letter, letter_template, analysis):
+        if changed_sentence_findings(letter, letter_template, analysis, profile.master_cv_markdown):
             sentence_misses += 1
             # One retry for the changed sentence; after that the template's own paragraph
             # stands in for it rather than failing a letter whose only fault is style.
@@ -226,7 +226,7 @@ def run_pipeline(
         # In an unsolicited application the opening's second sentence quotes the company's page.
         names = posting_names + [company_sentence(letter)] if unsolicited else posting_names
         return template_findings(letter, letter_template, analysis) + changed_sentence_findings(
-            letter, letter_template, analysis
+            letter, letter_template, analysis, profile.master_cv_markdown
         ) + opening + check_letter(
             letter,
             profile.master_cv_markdown,
