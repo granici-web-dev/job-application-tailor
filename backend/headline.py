@@ -2,7 +2,9 @@
 
 The model picks the roles for the posting; this module holds them to the list. A role outside
 it ("Solution Architect", "Senior Frontend Developer") is something the candidate has never
-been, and the headline is the first thing a recruiter reads. The positions under
+been, and the headline is the first thing a recruiter reads. One exception: a posting whose
+title contains a listed role ("Senior Frontend Developer React" contains "Frontend
+Developer") puts that title first, whole, and the listed roles follow. The positions under
 Berufserfahrung are never touched: they are what the contracts say.
 """
 
@@ -151,8 +153,17 @@ def headline_findings(headline: str | None, *, job_title: str, language: str) ->
     findings: list[str] = []
     if not MIN_ROLES <= len(roles) <= MAX_ROLES:
         findings.append(f"The headline has {len(roles)} roles; it must have {MIN_ROLES} or {MAX_ROLES}.")
+    title = posting_title(job_title)
+    listed = roles
+    if title:
+        if roles[0] != title:
+            findings.append(
+                f"The posting's title contains a listed role, so the headline starts with the title "
+                f"as it stands: '{title}'."
+            )
+        listed = roles[1:]
     allowed = [form for role in ROLES for form in role.forms(language)]
-    for role in roles:
+    for role in listed:
         if role not in allowed:
             findings.append(
                 f"The headline role '{role}' is not on the allowed list for a "
@@ -160,16 +171,21 @@ def headline_findings(headline: str | None, *, job_title: str, language: str) ->
             )
     if len(set(roles)) != len(roles):
         findings.append("The headline names the same role twice.")
-    posting_role = _posting_role(job_title)
-    if posting_role and roles and roles[0] not in posting_role.forms(language):
-        findings.append(
-            f"The posting's role is on the allowed list, so the headline starts with "
-            f"'{posting_role.forms(language)[0]}'."
-        )
+    if title:
+        contained = _posting_role(title)
+        for role in listed:
+            if role in contained.german + contained.english:
+                findings.append(f"The headline role '{role}' repeats the role in the title '{title}'.")
     return findings
 
 
-def headline_section() -> str:
+def posting_title(job_title: str) -> str | None:
+    """The job title without its gender marker, when it contains a listed role; else None."""
+    title = position_name(job_title)
+    return title if title and _posting_role(title) else None
+
+
+def headline_section(job_title: str = "") -> str:
     """The rules and the list, for the CV prompt."""
     lines = [
         "## Headline",
@@ -180,19 +196,39 @@ def headline_section() -> str:
     for role in ROLES:
         german, english = " / ".join(role.german), " / ".join(role.english)
         lines.append(f"- {german}" if german == english else f"- {german} / {english}")
-    lines += [
-        "When the posting's own role is on this list, it comes first. The others are the listed "
-        "roles closest to the posting's discipline. A role the posting names that is not on the "
-        "list (Solution Architect, Scrum Master, Data Scientist) never goes in; take the closest "
-        "listed one instead. Senior goes only with UI/UX Designer, never on a development or AI "
-        "role. The positions under the experience section keep the titles the master CV gives them.",
-    ]
+    title = posting_title(job_title)
+    if title:
+        lines.append(
+            f"The posting's title contains a listed role, so the headline starts with the title as "
+            f"it stands, '{title}', followed by one or two listed roles closest to the posting's "
+            "discipline that do not repeat the role in the title."
+        )
+    else:
+        lines.append(
+            "The roles are the listed ones closest to the posting's discipline. A role the posting "
+            "names that is not on the list (Solution Architect, Scrum Master, Data Scientist) never "
+            "goes in; take the closest listed one instead."
+        )
+    lines.append(
+        "Senior goes only with UI/UX Designer, never on a development or AI role, unless the "
+        "posting's own title carries it. The positions under the experience section keep the "
+        "titles the master CV gives them."
+    )
     return "\n".join(lines)
 
 
-def default_headline(discipline: str, language: str) -> str:
-    roles = DEFAULT_HEADLINES.get(discipline, DEFAULT_HEADLINES[DEFAULT_DISCIPLINE])
-    return SEPARATOR.join(_in_language(role, language) for role in roles)
+def default_headline(discipline: str, language: str, job_title: str = "") -> str:
+    """The discipline's listed roles, after the posting's title when it contains a listed role."""
+    roles = [
+        _in_language(role, language)
+        for role in DEFAULT_HEADLINES.get(discipline, DEFAULT_HEADLINES[DEFAULT_DISCIPLINE])
+    ]
+    title = posting_title(job_title)
+    if title:
+        contained = _posting_role(title)
+        others = [role for role in roles if role not in contained.german + contained.english]
+        roles = [title, *others[: MAX_ROLES - 1]]
+    return SEPARATOR.join(roles)
 
 
 def _in_language(form: str, language: str) -> str:

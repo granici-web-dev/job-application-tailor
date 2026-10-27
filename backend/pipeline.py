@@ -18,6 +18,7 @@ from backend.headline import (
     cv_language,
     default_headline,
     headline_findings,
+    position_name,
     read_headline,
     with_application_line,
     without_application_line,
@@ -124,7 +125,8 @@ def run_pipeline(
         [profile.personal.as_contact_lines(), analysis.job_title or "", analysis.company_name or ""]
     )
     # A posting term inside these is the posting quoted, not a skill claimed.
-    posting_names = [analysis.job_title or "", analysis.company_name or ""]
+    # Its form without the gender marker too: the headline and the application line quote it so.
+    posting_names = [analysis.job_title or "", position_name(analysis.job_title), analysis.company_name or ""]
     photo = load_photo_bytes(profile.personal.photo_path)
 
     headline_misses = 0
@@ -149,7 +151,7 @@ def run_pipeline(
             # rather than failing a CV whose only fault is its headline.
             if headline_misses > 1:
                 logger.warning("The CV headline left the role list twice; using the default for %s", analysis.discipline)
-                headline = default_headline(analysis.discipline, cv_language(cv))
+                headline = default_headline(analysis.discipline, cv_language(cv), analysis.job_title)
         if headline:
             cv = apply_position_headline(cv, headline)
         cv = with_application_line(cv, analysis.job_title)

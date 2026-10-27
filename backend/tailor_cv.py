@@ -628,7 +628,7 @@ def build_cv_prompt(
             "## Candidate contact details\n" + profile.personal.as_contact_lines(),
             "## Candidate master CV\n" + profile.master_cv_markdown,
             "## Job analysis\n" + json.dumps(analysis.to_dict(), ensure_ascii=False, indent=2),
-            headline_section(),
+            headline_section(analysis.job_title),
             *emphasis_section(analysis.discipline, kind="cv"),
         ]
     )

@@ -4,6 +4,7 @@ from backend.headline import (
     default_headline,
     headline_findings,
     position_name,
+    posting_title,
     read_headline,
     with_application_line,
     without_application_line,
@@ -46,17 +47,51 @@ def test_one_or_four_roles_are_caught():
     )[0]
 
 
-def test_a_listed_posting_role_has_to_come_first():
-    findings = _findings(
-        "Design Engineer · Frontend-Entwickler", job_title="Frontend Developer (m/w/d) React / TypeScript"
+def test_a_title_containing_a_listed_role_comes_first_whole():
+    title = "Senior Frontend Developer (m/w/d) React"
+
+    assert _findings("Senior Frontend Developer React · Design Engineer · Fullstack-Entwickler", job_title=title) == []
+    assert _findings("Frontend-Entwickler · Design Engineer", job_title=title) == [
+        "The posting's title contains a listed role, so the headline starts with the title as it "
+        "stands: 'Senior Frontend Developer React'."
+    ]
+
+
+def test_the_roles_after_the_title_come_from_the_list_and_do_not_repeat_it():
+    title = "Frontend Developer (m/w/d) React / TypeScript"
+
+    findings = _findings("Frontend Developer React / TypeScript · Frontend-Entwickler · Solution Architect", job_title=title)
+
+    assert findings[0].startswith("The headline role 'Solution Architect' is not on the allowed list")
+    assert findings[1] == (
+        "The headline role 'Frontend-Entwickler' repeats the role in the title 'Frontend Developer React / TypeScript'."
     )
 
-    assert findings == [
-        "The posting's role is on the allowed list, so the headline starts with 'Frontend-Entwickler'."
-    ]
-    assert _findings(
-        "Frontend-Entwickler · Design Engineer", job_title="Frontend Developer (m/w/d) React / TypeScript"
-    ) == []
+
+def test_a_title_without_a_listed_role_keeps_the_headline_from_the_list():
+    assert posting_title("Senior UX Designer (m/w/d)") is None
+    assert _findings("Senior UI/UX Designer · Design Engineer", job_title="Senior UX Designer (m/w/d)") == []
+    assert _findings("Senior UX Designer · Design Engineer", job_title="Senior UX Designer (m/w/d)")[0].startswith(
+        "The headline role 'Senior UX Designer' is not on the allowed list"
+    )
+
+
+def test_a_title_entered_by_hand_follows_the_same_rule():
+    assert posting_title("Fullstack-Entwickler") == "Fullstack-Entwickler"
+    assert _findings("Fullstack-Entwickler · Design Engineer", job_title="Fullstack-Entwickler") == []
+
+
+def test_the_default_puts_a_title_with_a_listed_role_first():
+    assert default_headline("engineering", "de", "Senior Frontend Developer (m/w/d) React") == (
+        "Senior Frontend Developer React · Design Engineer · Fullstack-Entwickler"
+    )
+    assert default_headline("engineering", "de", "Fullstack-Entwickler") == "Fullstack-Entwickler · Design Engineer"
+    assert default_headline("analysis", "de", "Business Analyst Digitale Plattformen (m/w/d)") == (
+        "Business Analyst Digitale Plattformen · UI/UX Designer · Fullstack-Entwickler"
+    )
+    assert default_headline("design", "de", "Senior UX Designer (m/w/d)") == "Senior UI/UX Designer · Design Engineer"
+    for title in ("Senior Frontend Developer (m/w/d) React", "Fullstack-Entwickler", "AI Engineer / LLM-Entwickler (m/w/d)"):
+        assert _findings(default_headline("ai", "de", title), job_title=title) == []
 
 
 def test_a_missing_headline_is_caught():
