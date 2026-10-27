@@ -9,9 +9,9 @@ from pathlib import Path
 from anthropic import Anthropic
 
 from backend.analyze import analyze_job, names_a_position
-from backend.errors import FactCheckError, JobTitleMissingError
+from backend.errors import FactCheckError, JobAnalysisError, JobTextMissingError, JobTitleMissingError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
-from backend.fetch import fetch_job_text
+from backend.fetch import fetch_job_text, job_board_posting
 from backend.grounding import skill_group_findings, with_master_skill_groups
 from backend.headline import cv_headline, cv_language, position_name, posting_title
 from backend.humanize import humanize
@@ -86,12 +86,23 @@ def run_pipeline(
     include_photo: bool = True,
     job_title: str | None = None,
 ) -> PipelineResult:
+    # Text pasted by hand is the posting, whatever the link: it is never fetched.
+    fetched_from_board = job_text is None and job_board_posting(job_url) is not None
     if job_text is None:
         logger.info("Fetching job posting from %s", job_url)
         job_text = fetch_job_text(job_url)
 
     logger.info("Analyzing job posting")
-    analysis = analyze_job(job_text, client=client, model=model)
+    try:
+        analysis = analyze_job(job_text, client=client, model=model)
+    except JobAnalysisError:
+        if fetched_from_board:
+            raise JobTextMissingError()
+        raise
+    if fetched_from_board and not analysis.job_title and not (analysis.hard_skills or analysis.key_responsibilities):
+        # The platform's page without the posting, which its JavaScript would have loaded.
+        logger.warning("The job platform's page at %s holds no posting; asking for its text", job_url)
+        raise JobTextMissingError()
     # A position entered by hand for a posting that names none: an unsolicited application.
     unsolicited = bool(job_title and job_title.strip()) and not names_a_position(analysis.job_title)
     if job_title and job_title.strip():

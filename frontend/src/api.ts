@@ -36,6 +36,7 @@ export interface GenerateResult {
 }
 
 export const JOB_TITLE_MISSING = 'job_title_missing'
+export const JOB_TEXT_MISSING = 'job_text_missing'
 
 export class ApiError extends Error {
   constructor(
@@ -63,7 +64,7 @@ async function errorMessage(response: Response): Promise<string> {
 }
 
 export async function generateApplication(input: {
-  url: string
+  url?: string
   text?: string
   job_title?: string
 }): Promise<GenerateResult> {

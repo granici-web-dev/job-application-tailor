@@ -4,13 +4,13 @@ import shutil
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import pypdf
 import pytest
 from openpyxl import load_workbook
 
-from backend.errors import FactCheckError, JobTitleMissingError
+from backend.errors import FactCheckError, JobTextMissingError, JobTitleMissingError
 from backend.pipeline import run_pipeline
 from backend.tracker import read_applications
 
@@ -570,3 +570,55 @@ def test_the_education_is_the_masters_word_for_word_and_never_reaches_humanize(t
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert "### Retraining — Code School, Berlin\n\n_2016 – 2019_\n\n- Moved to Germany in 2016, language courses\n" in draft
     assert draft.index("### Retraining") < draft.index("### BSc Computer Science")
+
+
+ASHBY_URL = "https://acme.com/careers?ashby_jid=7458d4e9-da2e-47bd-98cb-adfda43d42b2"
+CAREER_PAGE = "<html><body><h1>Karriere bei Acme GmbH</h1><p>" + "Wir sind ein Team aus Köln. " * 20 + "</p></body></html>"
+NO_POSTING_JSON = json.dumps(
+    {**json.loads(ANALYSIS_JSON), "job_title": None, "hard_skills": [], "keywords": [], "key_responsibilities": []}
+)
+
+
+def _page(text):
+    return Mock(text=text, headers={"Content-Type": "text/html; charset=utf-8"}, raise_for_status=Mock())
+
+
+@pytest.mark.parametrize("analysis", [NO_POSTING_JSON, json.dumps({"company_name": None})])
+def test_a_platform_link_to_a_page_without_the_posting_asks_for_its_text(tmp_path, analysis):
+    client = Mock()
+    client.messages.create.side_effect = [_message(analysis)]
+
+    with patch("backend.fetch.requests.get", return_value=_page(CAREER_PAGE)):
+        with pytest.raises(JobTextMissingError, match="Вакансия загружается через JavaScript, вставьте текст вакансии вручную"):
+            run_pipeline(
+                job_url=ASHBY_URL,
+                job_text=None,
+                output_dir=tmp_path / "out",
+                profile_dir=PROFILE_DIR,
+                client=client,
+                model="claude-sonnet-4-6",
+                language=None,
+                today=date(2026, 6, 1),
+            )
+
+    assert client.messages.create.call_count == 1
+    assert not (tmp_path / "out").exists()
+
+
+def test_text_pasted_for_a_platform_link_is_used_as_it_stands(tmp_path):
+    client = _client_returning(CV_MARKDOWN, CV_MARKDOWN, LETTER_JSON)
+
+    with patch("backend.fetch.requests.get") as get:
+        result = run_pipeline(
+            job_url=ASHBY_URL,
+            job_text="Senior Backend Engineer at Acme GmbH.",
+            output_dir=tmp_path,
+            profile_dir=PROFILE_DIR,
+            client=client,
+            model="claude-sonnet-4-6",
+            language=None,
+            today=date(2026, 6, 1),
+        )
+
+    get.assert_not_called()
+    assert result.cv_pdf_path.exists()

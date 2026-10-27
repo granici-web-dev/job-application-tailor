@@ -17,6 +17,9 @@ PROFILE_DIR = Path("profile")
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(message)s")
+    if not args.url and not args.text_file:
+        print("Pass the posting's URL or its text with --text-file.", file=sys.stderr)
+        return 1
     try:
         settings = load_settings()
         client = make_anthropic_client(settings)
@@ -55,7 +58,12 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         prog="python -m backend.apply",
         description="Tailor a CV and cover letter to a job posting and record the application.",
     )
-    parser.add_argument("url", help="URL of the job posting")
+    parser.add_argument(
+        "url",
+        nargs="?",
+        default="",
+        help="URL of the job posting; may be left out with --text-file.",
+    )
     parser.add_argument(
         "--text-file",
         help="Read the posting text from this file instead of downloading the URL.",

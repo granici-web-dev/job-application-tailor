@@ -12,7 +12,13 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
 from backend.config import Settings, frontend_origins, load_settings, make_anthropic_client
-from backend.errors import ApplicationNotFoundError, JobTitleMissingError, TailorError, TrackerError
+from backend.errors import (
+    ApplicationNotFoundError,
+    JobTextMissingError,
+    JobTitleMissingError,
+    TailorError,
+    TrackerError,
+)
 from backend.pipeline import TRACKER_FILENAME, run_pipeline
 from backend.tracker import (
     ALLOWED_STATUSES,
@@ -47,7 +53,8 @@ def get_paths() -> Paths:
 
 
 class GenerateRequest(BaseModel):
-    url: str
+    # Either may be left empty, not both: pasted text is the posting whatever the link.
+    url: str = ""
     text: str | None = None
     lang: str | None = None
     job_title: str | None = None
@@ -136,6 +143,12 @@ async def _handle_job_title_missing(request: Request, exc: JobTitleMissingError)
     return JSONResponse(status_code=422, content={"detail": str(exc), "code": "job_title_missing"})
 
 
+@app.exception_handler(JobTextMissingError)
+async def _handle_job_text_missing(request: Request, exc: JobTextMissingError) -> JSONResponse:
+    # The code lets the page open the field for the posting's text.
+    return JSONResponse(status_code=422, content={"detail": str(exc), "code": "job_text_missing"})
+
+
 @app.exception_handler(TailorError)
 async def _handle_tailor_error(request: Request, exc: TailorError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -148,9 +161,10 @@ def generate(
     client: Anthropic = Depends(get_anthropic_client),
     paths: Paths = Depends(get_paths),
 ) -> GenerateResponse:
+    text = request.text.strip() if request.text else None
     result = run_pipeline(
-        job_url=request.url,
-        job_text=request.text,
+        job_url=request.url.strip(),
+        job_text=text or None,
         output_dir=paths.output_dir,
         profile_dir=paths.profile_dir,
         client=client,

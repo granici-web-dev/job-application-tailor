@@ -1,6 +1,13 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, downloadFile, generateApplication, GenerateResult, JOB_TITLE_MISSING } from '../api'
+import {
+  ApiError,
+  downloadFile,
+  generateApplication,
+  GenerateResult,
+  JOB_TEXT_MISSING,
+  JOB_TITLE_MISSING,
+} from '../api'
 import { DownloadIcon } from '../icons'
 
 type Phase = 'idle' | 'loading' | 'success' | 'error'
@@ -18,6 +25,14 @@ export function GeneratePage() {
   const [jobTitle, setJobTitle] = useState('')
   const [downloadError, setDownloadError] = useState('')
   const [elapsed, setElapsed] = useState(0)
+  const [needsText, setNeedsText] = useState(false)
+  const textArea = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (needsText) {
+      textArea.current?.focus()
+    }
+  }, [needsText])
 
   useEffect(() => {
     if (phase !== 'loading') {
@@ -47,16 +62,18 @@ export function GeneratePage() {
 
   async function generate(manualJobTitle?: string) {
     const trimmed = url.trim()
-    if (!trimmed) {
+    const trimmedText = text.trim()
+    // Pasted text is the posting whatever the link, so it goes without one too.
+    if (!trimmed && !trimmedText) {
       return
     }
     setPhase('loading')
     setError('')
     setResult(null)
     setDownloadError('')
+    setNeedsText(false)
     try {
       const payload: { url: string; text?: string; job_title?: string } = { url: trimmed }
-      const trimmedText = text.trim()
       if (trimmedText) {
         payload.text = trimmedText
       }
@@ -69,6 +86,10 @@ export function GeneratePage() {
       setPhase('success')
     } catch (caught) {
       setNeedsJobTitle(caught instanceof ApiError && caught.code === JOB_TITLE_MISSING)
+      if (caught instanceof ApiError && caught.code === JOB_TEXT_MISSING) {
+        setShowText(true)
+        setNeedsText(true)
+      }
       setError(caught instanceof Error ? caught.message : 'Не удалось сгенерировать заявку.')
       setPhase('error')
     }
@@ -95,7 +116,7 @@ export function GeneratePage() {
         </p>
       </div>
 
-      <form className="generate-form" onSubmit={onSubmit}>
+      <form className="generate-form" onSubmit={onSubmit} noValidate>
         <div className="field">
           <input
             id="job-url"
@@ -110,7 +131,7 @@ export function GeneratePage() {
             autoComplete="off"
           />
         </div>
-        <button type="submit" className="btn btn-primary" disabled={loading || url.trim() === ''}>
+        <button type="submit" className="btn btn-primary" disabled={loading || (url.trim() === '' && text.trim() === '')}>
           {loading ? 'Генерация…' : 'Сгенерировать'}
         </button>
       </form>
@@ -132,10 +153,11 @@ export function GeneratePage() {
             Текст вакансии
           </label>
           <p id="job-text-hint" className="manual-hint">
-            Если страница не скачивается (Indeed, LinkedIn, SPA), вставьте описание вручную. Ссылка всё равно
-            сохранится в трекере и попадёт в запрос.
+            Если страница не скачивается (Indeed, LinkedIn, SPA), вставьте описание вручную. Текст заменяет
+            страницу по ссылке; ссылку можно не указывать, а указанная сохранится в трекере.
           </p>
           <textarea
+            ref={textArea}
             id="job-text"
             className="text-area"
             rows={8}

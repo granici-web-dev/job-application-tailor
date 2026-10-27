@@ -2,7 +2,7 @@ import json
 from datetime import date
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import anthropic
 import httpx
@@ -355,3 +355,35 @@ def test_a_position_entered_by_hand_goes_to_the_pipeline(client):
 
     assert response.status_code == 200
     assert response.json()["analysis"]["job_title"] == "Backend Engineer"
+
+
+def test_a_platform_page_without_the_posting_asks_for_its_text(client):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    fake = Mock()
+    fake.messages.create.side_effect = [
+        _message(json.dumps({**json.loads(ANALYSIS_JSON), "job_title": None, "hard_skills": [], "key_responsibilities": []}))
+    ]
+    app.dependency_overrides[get_anthropic_client] = lambda: fake
+    page = Mock(
+        text="<html><body><p>" + "Karriere bei Acme GmbH. " * 20 + "</p></body></html>",
+        headers={"Content-Type": "text/html; charset=utf-8"},
+        raise_for_status=Mock(),
+    )
+
+    with patch("backend.fetch.requests.get", return_value=page):
+        response = client.post("/generate", json={"url": "https://acme.com/careers?ashby_jid=abc"})
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "Вакансия загружается через JavaScript, вставьте текст вакансии вручную",
+        "code": "job_text_missing",
+    }
+
+
+def test_pasted_text_needs_no_link(client):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    app.dependency_overrides[get_anthropic_client] = _fake_client
+
+    response = client.post("/generate", json={"text": "Backend role at Acme GmbH."})
+
+    assert response.status_code == 200
