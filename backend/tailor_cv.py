@@ -231,15 +231,17 @@ def with_relevant_projects(master_markdown: str, discipline: str | None) -> str:
 
 
 def project_letter_sentence(master_markdown: str, discipline: str | None) -> str | None:
-    """The letter sentence of the first project the CV keeps for this discipline.
+    """The letter sentence of the first project tagged for this discipline, if any.
 
-    Same selection and order as the CV's Projekte section, so the letter tells the project
-    the reader also finds in the CV.
+    Same order as the CV's Projekte section, so the letter tells the project the reader also
+    finds in the CV. With no project tagged for the discipline there is no sentence, and the
+    template's [PROJEKT] goes: the paragraph is about the Weiterbildung alone.
     """
     parsed = _projects(master_markdown)
     if parsed is None:
         return None
-    return next((project.letter for project in _relevant(parsed[2], discipline) if project.letter), None)
+    tagged = [project for project in parsed[2] if discipline and discipline in project.tags]
+    return next((project.letter for project in tagged if project.letter), None)
 
 
 def _relevant(projects: list[_Project], discipline: str | None) -> list[_Project]:

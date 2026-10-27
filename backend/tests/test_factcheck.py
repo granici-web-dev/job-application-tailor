@@ -409,3 +409,51 @@ def test_posting_terms_in_the_company_sentence_of_an_unsolicited_letter_pass():
     assert "'Barrierefreiheit' does not appear in the master CV." in check_letter(
         letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES
     )
+
+
+THREE_SYSTEMS_MASTER = """# Serghei Granici
+
+## Berufserfahrung
+
+### AI-native Product Designer & Full-stack Developer — CorLab (Praktikum)
+
+_05/2026 – heute_
+
+**Verwaltungssystem für eine staatliche Stelle (Moldau) – Design und Entwicklung:**
+
+- Cognitive Walkthrough und WCAG-2.2-AA-Audit vor der Umsetzung
+
+**Bestehendes Verwaltungssystem (Moldau) – Audit, Redesign und Umsetzung:**
+
+- UX/UI-Audit über 6 Rollen
+
+**Website und Back Office für eine Kinderarzt- und Ernährungspraxis (Moldau) – Fullstack-Plattform:**
+
+- Öffentliche Website in drei Sprachen mit eigenem CMS und Back Office
+- Online-Zahlung (maib Checkout) und Terminbuchung (Calendly)
+- Tech-Stack: Next.js 16, NestJS 11, Prisma 7, PostgreSQL 16
+"""
+ARZTPRAXIS = (
+    "Für eine Arztpraxis habe ich eine Plattform mit eigenem CMS, Online-Zahlung und Terminbuchung "
+    "gebaut – Next.js, NestJS, Prisma und PostgreSQL."
+)
+
+
+def _corlab_letter(*sentences):
+    return (
+        "Sehr geehrte Damen und Herren,\n\nAktuell verantworte ich bei CorLab Projekte komplett selbst. "
+        + " ".join(sentences)
+        + "\n\nMit freundlichen Grüßen\nSerghei Granici"
+    )
+
+
+def test_the_third_corlab_system_is_its_own_unit():
+    terms = ["Next.js", "PostgreSQL", "WCAG"]
+
+    assert check_letter(_corlab_letter(ARZTPRAXIS), THREE_SYSTEMS_MASTER, posting_terms=terms) == []
+    findings = check_letter(
+        _corlab_letter(ARZTPRAXIS.replace("gebaut", "gebaut und einen WCAG-2.2-AA-Audit durchgeführt")),
+        THREE_SYSTEMS_MASTER,
+        posting_terms=terms,
+    )
+    assert findings and all("› Website und Back Office" in finding for finding in findings), findings

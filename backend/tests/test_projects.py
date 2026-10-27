@@ -96,9 +96,17 @@ def test_the_letter_tells_the_first_project_the_cv_keeps():
     assert project_letter_sentence(MASTER, "engineering") == "Daneben habe ich eine Website gebaut."
 
 
-def test_with_no_project_for_the_discipline_the_letter_tells_the_first_one():
+def test_with_no_project_for_the_discipline_the_letter_tells_none():
     for discipline in ("unknown", None):
-        assert project_letter_sentence(MASTER, discipline) == "Daneben habe ich eine Website gebaut."
+        assert project_letter_sentence(MASTER, discipline) is None
+
+
+def test_without_a_project_sentence_the_paragraph_keeps_only_the_weiterbildung():
+    template = "Im Juli 2026 habe ich meine Weiterbildung abgeschlossen. [PROJEKT]\n\nIch stehe bereit."
+
+    assert with_project_sentence(template, project_letter_sentence(MASTER, "unknown")) == (
+        "Im Juli 2026 habe ich meine Weiterbildung abgeschlossen.\n\nIch stehe bereit."
+    )
 
 
 def test_the_project_sentence_fills_the_template_placeholder():
