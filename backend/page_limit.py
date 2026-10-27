@@ -5,9 +5,9 @@ and asking again with the page count in hand never brought one down. So the pipe
 measures the rendered PDF and shortens here, in a fixed order: first the skill groups the
 posting has no use for, then the layout, within floors that keep the page readable. The
 experience and the projects are never cut: every role keeps every bullet, and every project
-that passed the tag filter stays. A CV that still runs past two pages is a three-page CV by
-design: Ausbildung and Sprachen then start on a page of their own, instead of a few lines of
-them trailing onto the last one.
+that passed the tag filter stays. A CV that still runs past two pages is a longer CV by
+design: the last section that does not fit on its page starts a new one, with all after it,
+instead of a few lines of it trailing onto the next page.
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ FONT_STEP_PT = 0.5
 # Skill groups naming nothing the posting asks for go, down to this many groups.
 MIN_SKILL_GROUPS = 4
 
-EDUCATION_SECTION = re.compile(r"^(##\s*(?:ausbildung|education)\b.*?)\s*$", re.IGNORECASE)
+SECTION_LINE = re.compile(r"^##\s+\S")
 NEW_PAGE = "{: .new-page }"
 
 
@@ -66,16 +66,20 @@ def drop_irrelevant_skill_group(cv_markdown: str, posting_terms: Sequence[str]) 
     return cv_markdown, []
 
 
-def with_education_on_new_page(cv_markdown: str) -> str:
-    """The CV with its education section starting a new page; Sprachen follows it there."""
+def with_new_page_before(cv_markdown: str, section: int) -> str:
+    """The CV with its `section`-th `## ` section (from 0) starting a new page."""
     lines = cv_markdown.splitlines()
-    for index, line in enumerate(lines):
-        match = EDUCATION_SECTION.match(line)
-        if match and NEW_PAGE not in line:
-            lines[index] = f"{match.group(1)} {NEW_PAGE}"
-            break
+    headings = [index for index, line in enumerate(lines) if SECTION_LINE.match(line)]
+    if section >= len(headings) or NEW_PAGE in lines[headings[section]]:
+        return cv_markdown
+    lines[headings[section]] = f"{lines[headings[section]].rstrip()} {NEW_PAGE}"
     rebuilt = "\n".join(lines)
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def last_split_section(spans: Sequence[tuple[int, int]]) -> int | None:
+    """Counting from the end, the first section laid out across two pages, or None."""
+    return next((index for index in reversed(range(len(spans))) if spans[index][0] != spans[index][1]), None)
 
 
 def _names_posting_term(body: str, posting_terms: Sequence[str]) -> bool:
@@ -92,6 +96,8 @@ def _names_posting_term(body: str, posting_terms: Sequence[str]) -> bool:
 
 
 Render = Callable[[str, CvLayout], tuple[bytes, int]]
+# Each `## ` section's first and last page, as laid out with that layout.
+Locate = Callable[[str, CvLayout], Sequence[tuple[int, int]]]
 
 
 @dataclass(frozen=True)
@@ -116,13 +122,16 @@ _LAYOUT_STEPS = (
 )
 
 
-def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[str] = ()) -> FittedCv:
+def fit_to_page_limit(
+    cv_markdown: str, render: Render, posting_terms: Sequence[str] = (), locate: Locate | None = None
+) -> FittedCv:
     """The CV shortened without the model until it fits MAX_CV_PAGES, or as far as allowed.
 
     One at a time, the skill groups that name none of `posting_terms`, down to
     MIN_SKILL_GROUPS; then the layout, within its floors. Roles, bullets and projects are never
-    touched. A CV that still does not fit is a three-page CV, with its education section
-    starting a new page.
+    touched. A CV that still does not fit keeps its length; with `locate`, the last section
+    laid out across two pages starts a new one instead — when it then fits whole on that page
+    and no page is added.
     """
     layout = DEFAULT_CV_LAYOUT
     pdf, pages = render(cv_markdown, layout)
@@ -147,11 +156,18 @@ def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[
         logger.warning("CV was %d pages; %s -> %d pages", pages, description, adjusted_pages)
         layout, pages = adjusted, adjusted_pages
 
-    if pages > MAX_CV_PAGES:
-        broken = with_education_on_new_page(cv_markdown)
+    if pages > MAX_CV_PAGES and locate is not None:
+        split = last_split_section(locate(cv_markdown, layout))
+        broken = cv_markdown if split is None else with_new_page_before(cv_markdown, split)
         if broken != cv_markdown:
-            pdf, pages = render(broken, layout)
-            cv_markdown = broken
-            logger.info("CV runs past %d pages; Ausbildung starts a new page -> %d pages", MAX_CV_PAGES, pages)
+            broken_pdf, broken_pages = render(broken, layout)
+            heading = [line for line in cv_markdown.splitlines() if SECTION_LINE.match(line)][split]
+            first, last = locate(broken, layout)[split]
+            if broken_pages <= pages and first == last:
+                logger.info("CV runs to %d pages; '%s' starts a new page", broken_pages, heading)
+                cv_markdown, pdf, pages = broken, broken_pdf, broken_pages
+            else:
+                # A section longer than a page, or a break that adds one, gains nothing.
+                logger.info("CV runs to %d pages; a break before '%s' would not keep it whole, so none", pages, heading)
     logger.info("CV layout: %s", layout.describe())
     return FittedCv(markdown=cv_markdown, pdf=pdf, pages=pages, layout=layout)

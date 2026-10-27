@@ -80,7 +80,7 @@ ul { margin: 3pt 0 6pt 16pt; padding: 0; }
 li { margin: 0 0 2pt; }
 a { color: #111111; text-decoration: none; }
 strong { font-weight: 600; color: #111111; }
-/* A section the page limit puts on a page of its own: `## Ausbildung {: .new-page }`. */
+/* A section the page limit starts a new page with: `## Kenntnisse {: .new-page }`. */
 .new-page { break-before: page; }
 """
 
@@ -164,15 +164,51 @@ def render_markdown_with_page_count(
     line_breaks: bool = False,
 ) -> tuple[bytes, int]:
     """The PDF and its page count, from one layout pass."""
+    _, document = _laid_out(markdown_text, css, photo, include_photo, line_breaks)
+    return document.write_pdf(), len(document.pages)
+
+
+def section_page_spans(
+    markdown_text: str,
+    *,
+    css: str = LETTER_CSS,
+    photo: bytes | None = None,
+    include_photo: bool = True,
+    line_breaks: bool = False,
+) -> list[tuple[int, int]]:
+    """For each `## ` section in order, the first and last page (from 0) it is laid out on.
+
+    A section runs from its heading to the next one. Its elements are found on the pages by
+    identity, so nothing is wrapped around them and the layout is the one the PDF gets.
+    """
+    html, document = _laid_out(markdown_text, css, photo, include_photo, line_breaks)
+    section_of: dict[object, int] = {}
+    body = html.etree_element.find("body")
+    section = -1
+    for child in body if body is not None else []:
+        if child.tag == "h2":
+            section += 1
+        if section >= 0:
+            for element in child.iter():
+                section_of[element] = section
+    spans: dict[int, list[int]] = {}
+    for number, page in enumerate(document.pages):
+        for box in page._page_box.descendants():
+            index = section_of.get(getattr(box, "element", None))
+            if index is not None:
+                spans.setdefault(index, [number, number])[1] = number
+    return [tuple(spans[index]) for index in sorted(spans)]
+
+
+def _laid_out(markdown_text: str, css: str, photo: bytes | None, include_photo: bool, line_breaks: bool):
     # The CV header and the skills block put each entry on its own line; without nl2br
     # Markdown folds them into one run-on paragraph and the separators disappear.
     extensions = ["extra", "nl2br"] if line_breaks else ["extra"]
     body_html = markdown_lib.markdown(markdown_text, extensions=extensions)
     if photo is not None and include_photo:
         body_html = f'<img class="cv-photo" src="{_image_data_uri(photo)}" alt="">' + body_html
-    document_html = HTML_DOCUMENT.format(css=css, body=body_html)
-    document = HTML(string=document_html).render()
-    return document.write_pdf(), len(document.pages)
+    html = HTML(string=HTML_DOCUMENT.format(css=css, body=body_html))
+    return html, html.render()
 
 
 def _image_data_uri(photo: bytes) -> str:

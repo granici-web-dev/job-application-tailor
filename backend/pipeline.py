@@ -27,7 +27,13 @@ from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
 from backend.page_limit import fit_to_page_limit
-from backend.render_pdf import CvLayout, cv_css, render_markdown_to_pdf, render_markdown_with_page_count
+from backend.render_pdf import (
+    CvLayout,
+    cv_css,
+    render_markdown_to_pdf,
+    render_markdown_with_page_count,
+    section_page_spans,
+)
 from backend.tailor_cv import (
     apply_position_headline,
     entry_intro_findings,
@@ -191,8 +197,13 @@ def run_pipeline(
             cv, css=cv_css(layout), photo=photo, include_photo=include_photo, line_breaks=True
         )
 
+    def locate_sections(cv: str, layout: CvLayout) -> list[tuple[int, int]]:
+        return section_page_spans(
+            cv, css=cv_css(layout), photo=photo, include_photo=include_photo, line_breaks=True
+        )
+
     fitted = fit_to_page_limit(
-        finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv, posting_terms
+        finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv, posting_terms, locate_sections
     )
     cv_markdown, cv_pdf = fitted.markdown, fitted.pdf
 

@@ -1,10 +1,16 @@
-from backend.page_limit import drop_irrelevant_skill_group, fit_to_page_limit, with_education_on_new_page
+from backend.page_limit import (
+    drop_irrelevant_skill_group,
+    fit_to_page_limit,
+    last_split_section,
+    with_new_page_before,
+)
 from backend.render_pdf import (
     CV_CSS,
     DEFAULT_CV_LAYOUT,
     CvLayout,
     cv_css,
     render_markdown_with_page_count,
+    section_page_spans,
 )
 
 CV = """# Serghei Granici
@@ -115,31 +121,91 @@ def test_the_font_never_goes_below_10_pt_and_the_cv_goes_out_anyway():
     assert fitted.pdf == b"%PDF"
 
 
-def test_a_cv_still_over_two_pages_starts_ausbildung_on_a_new_page():
-    fitted = fit_to_page_limit(CV, _render_needing(font=9))
+def _locating(spans):
+    """Where the sections lie; a section given a page break lies whole on its page after it."""
+
+    def locate(markdown, layout):
+        if ".new-page" not in markdown:
+            return spans
+        broken = [line for line in markdown.splitlines() if line.startswith("## ")].index(
+            next(line for line in markdown.splitlines() if ".new-page" in line)
+        )
+        return [(first, first) if index == broken else (first, last) for index, (first, last) in enumerate(spans)]
+
+    return locate
+
+
+def test_the_last_section_split_across_pages_starts_a_new_one():
+    # Sections: Berufserfahrung, Ausbildung. Ausbildung runs from page 2 onto page 3.
+    fitted = fit_to_page_limit(CV, _render_needing(font=9), locate=_locating([(0, 1), (1, 2)]))
 
     assert "## Ausbildung {: .new-page }\n" in fitted.markdown
     assert fitted.markdown.replace(" {: .new-page }", "") == CV
 
 
-def test_a_cv_that_fits_gets_no_page_break():
-    assert ".new-page" not in fit_to_page_limit(CV, _render_needing(compact=True)).markdown
+def test_a_break_that_would_add_a_page_is_not_set():
+    def render(markdown, layout):
+        return b"%PDF", 4 if ".new-page" in markdown else 3
+
+    fitted = fit_to_page_limit(CV, render, locate=_locating([(0, 1), (1, 2)]))
+
+    assert (fitted.pages, ".new-page" in fitted.markdown) == (3, False)
 
 
-def test_the_page_break_is_set_once():
-    once = with_education_on_new_page(CV)
+def test_a_section_longer_than_a_page_gets_no_break():
+    always_split = lambda markdown, layout: [(0, 1), (1, 1)]
 
-    assert with_education_on_new_page(once) == once
-    assert with_education_on_new_page("# Name\n\n## Berufserfahrung\n") == "# Name\n\n## Berufserfahrung\n"
+    fitted = fit_to_page_limit(CV, _render_needing(font=9), locate=always_split)
+
+    assert ".new-page" not in fitted.markdown
 
 
-def test_the_page_break_really_puts_ausbildung_on_its_own_page():
-    short = "# Name\n\n## Berufserfahrung\n\n- Arbeit\n\n## Ausbildung\n\n- Studium\n\n## Sprachen\n\n- Deutsch\n"
+def test_a_cv_that_fits_or_has_no_split_section_gets_no_break():
+    assert ".new-page" not in fit_to_page_limit(CV, _render_needing(compact=True), locate=_locating([(0, 1), (1, 2)])).markdown
+    assert ".new-page" not in fit_to_page_limit(CV, _render_needing(font=9), locate=_locating([(0, 0), (2, 2)])).markdown
 
-    _, together = render_markdown_with_page_count(short, css=cv_css(), line_breaks=True)
-    _, apart = render_markdown_with_page_count(with_education_on_new_page(short), css=cv_css(), line_breaks=True)
 
-    assert (together, apart) == (1, 2)
+def test_the_split_section_is_counted_from_the_end():
+    assert last_split_section([(0, 1), (1, 1), (1, 2), (2, 2)]) == 2
+    assert last_split_section([(0, 1), (1, 1), (1, 1)]) == 0
+    assert last_split_section([(0, 0), (1, 1)]) is None
+
+
+def test_the_page_break_is_set_once_and_only_on_a_section_there_is():
+    once = with_new_page_before(CV, 1)
+
+    assert with_new_page_before(once, 1) == once
+    assert with_new_page_before(CV, 5) == CV
+
+
+SPLIT_SKILLS_CV = (
+    "# Name\n\n## Berufserfahrung\n\n"
+    + "\n".join(f"- Punkt {n} mit etwas Text, der eine Zeile füllt" for n in range(80))
+    + "\n\n## Kenntnisse\n\n"
+    + "\n\n".join(f"**Gruppe {g}:** React, TypeScript, Node.js, PostgreSQL" for g in range(6))
+    + "\n\n## Ausbildung\n\n- Weiterbildung\n- Bachelor\n\n## Sprachen\n\n- Deutsch\n- Englisch\n"
+)
+
+
+def test_on_a_real_layout_the_split_skills_section_moves_and_the_cv_stays_at_three_pages():
+    """As in the Frontend run: Kenntnisse spills from page 2 onto 3; a break before Ausbildung
+    would make four pages, a break before Kenntnisse keeps three."""
+
+    def render(markdown, layout):
+        return render_markdown_with_page_count(markdown, css=cv_css(layout), line_breaks=True)
+
+    def locate(markdown, layout):
+        return section_page_spans(markdown, css=cv_css(layout), line_breaks=True)
+
+    assert render(SPLIT_SKILLS_CV, DEFAULT_CV_LAYOUT)[1] == 3
+    assert render(with_new_page_before(SPLIT_SKILLS_CV, 2), DEFAULT_CV_LAYOUT)[1] == 4
+
+    fitted = fit_to_page_limit(SPLIT_SKILLS_CV, lambda markdown, layout: render(markdown, DEFAULT_CV_LAYOUT),
+                               locate=lambda markdown, layout: locate(markdown, DEFAULT_CV_LAYOUT))
+
+    assert fitted.pages == 3
+    assert "## Kenntnisse {: .new-page }" in fitted.markdown
+    assert locate(fitted.markdown, DEFAULT_CV_LAYOUT)[1:] == [(2, 2), (2, 2), (2, 2)]
 
 
 def test_layout_overrides_are_appended_to_the_base_css():
