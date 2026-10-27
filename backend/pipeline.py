@@ -36,6 +36,7 @@ from backend.tailor_cv import (
     summary_variant,
     project_letter_sentence,
     tailor_cv,
+    with_master_bullets,
     with_master_entry_intros,
     with_relevant_projects,
     with_summary_variant,
@@ -136,6 +137,8 @@ def run_pipeline(
         cv = put_back_master_summary(cv, summary, cv_profile.master_cv_markdown)
         # Same for each entry's introduction: the master's own paragraph, whatever humanize did.
         cv = with_master_entry_intros(cv, cv_profile.master_cv_markdown)
+        # And each entry's bullets: the master's set, in the model's order where it kept them.
+        cv = with_master_bullets(cv, cv_profile.master_cv_markdown)
         if headline_findings(headline, job_title=analysis.job_title, language=cv_language(cv)):
             headline_misses += 1
             # One retry for the headline; after that the discipline's default stands in for it

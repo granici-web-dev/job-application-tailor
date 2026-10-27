@@ -251,7 +251,8 @@ def _run(tmp_path, profile_dir, client):
 
 
 def test_a_cv_that_fails_the_fact_check_is_retried_with_the_findings(tmp_path):
-    invented = SHORT_MASTER.replace("with FastAPI", "with FastAPI for 99 clients")
+    # Outside the experience: a bullet there is put back from the master before the check.
+    invented = SHORT_MASTER + "\n## Awards\n\n- Winner of 99 hackathons\n"
     client = _client_returning(
         invented, invented, SHORT_MASTER, SHORT_MASTER, LETTER_JSON
     )
@@ -265,7 +266,8 @@ def test_a_cv_that_fails_the_fact_check_is_retried_with_the_findings(tmp_path):
 
 
 def test_a_cv_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path):
-    invented = SHORT_MASTER.replace("with FastAPI", "with FastAPI for 99 clients")
+    # Outside the experience: a bullet there is put back from the master before the check.
+    invented = SHORT_MASTER + "\n## Awards\n\n- Winner of 99 hackathons\n"
     client = _client_returning(*[invented] * 6)
 
     with pytest.raises(FactCheckError, match="The number 99 does not appear in the master CV"):

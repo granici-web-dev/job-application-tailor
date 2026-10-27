@@ -39,6 +39,8 @@ PROJECT_LETTER = re.compile(r"^\s*_Letter:\s*(.*?)_\s*$", re.IGNORECASE)
 ENTRY_HEADING = re.compile(r"^###\s+(.*?)\s*$")
 ITALIC_LINE = re.compile(r"^\s*_[^_].*_\s*$")
 INTRO_STOP = re.compile(r"^\s*([-*+]\s|\*\*|#|---)")
+BULLET_LINE = re.compile(r"^\s*[-*+]\s+(.*?)\s*$")
+BOLD_LINE = re.compile(r"^\s*\*\*(.+?)\*\*")
 # A variant of the summary in the master CV: `### Profil (design)` under `## Profil`.
 SUMMARY_VARIANT = re.compile(r"^###\s+.*\((\w+)\)\s*$")
 # Which summary variant each discipline gets; an unclassified posting gets the engineering one.
@@ -424,6 +426,109 @@ def entry_intro_findings(cv_markdown: str, master_markdown: str) -> list[str]:
             expected = " ".join(line.strip() for line in master[key] if line.strip()) or "none"
             findings.append(f"The introduction of '{heading}' must be the master CV's, word for word: {expected}")
     return findings
+
+
+def with_master_bullets(cv_markdown: str, master_markdown: str) -> str:
+    """Each entry's bullets made the master CV's set, in number and wording.
+
+    Per list (CorLab's lists sit under bold subheadings, matched by them): a bullet worded as
+    the master's keeps its place, so the model's order within the entry stands; a master
+    bullet that is missing — dropped, or reworded by the model or humanize — comes back
+    after the master bullet it follows; a bullet the master does not have goes. An entry
+    whose heading is not the master's is left alone; entry_intro_findings reports it.
+    """
+    master = {
+        _entry_key(heading): _bullet_lists(master_markdown.splitlines()[start:end])
+        for heading, (start, end), _ in _entry_spans(master_markdown)
+    }
+    lines = cv_markdown.splitlines()
+    for heading, (start, end), _ in reversed(_entry_spans(cv_markdown)):
+        master_lists = master.get(_entry_key(heading))
+        if master_lists is None:
+            continue
+        body = lines[start:end]
+        rebuilt = _with_master_lists(body, master_lists)
+        if rebuilt != body:
+            logger.info("Bullets of '%s' brought back to the master CV's", heading)
+        lines[start:end] = rebuilt
+    rebuilt_cv = "\n".join(lines)
+    return rebuilt_cv + "\n" if cv_markdown.endswith("\n") else rebuilt_cv
+
+
+@dataclass(frozen=True)
+class _BulletList:
+    """A run of bullets in an entry's body, under the bold line it follows (if any)."""
+
+    key: str
+    bold_line: str | None
+    start: int
+    end: int
+    texts: list[str]
+
+
+def _bullet_lists(body: list[str]) -> list[_BulletList]:
+    lists = []
+    bold_line = None
+    index = 0
+    while index < len(body):
+        if BOLD_LINE.match(body[index]):
+            bold_line = body[index].strip()
+        if not BULLET_LINE.match(body[index]):
+            index += 1
+            continue
+        start = index
+        while index < len(body) and BULLET_LINE.match(body[index]):
+            index += 1
+        key = _entry_key(BOLD_LINE.match(bold_line).group(1)) if bold_line else ""
+        texts = [BULLET_LINE.match(line).group(1) for line in body[start:index]]
+        lists.append(_BulletList(key, bold_line, start, index, texts))
+    return lists
+
+
+def _with_master_lists(body: list[str], master_lists: list[_BulletList]) -> list[str]:
+    master_texts = {master.key: master.texts for master in master_lists}
+    body = list(body)
+    for cv_list in reversed(_bullet_lists(body)):
+        if cv_list.key in master_texts:
+            merged = _merged(cv_list.texts, master_texts[cv_list.key])
+            body[cv_list.start : cv_list.end] = [f"- {text}" for text in merged]
+        else:
+            # A list the master does not have goes, with the blank line after it.
+            end = cv_list.end + (1 if cv_list.end < len(body) and not body[cv_list.end].strip() else 0)
+            body[cv_list.start : end] = []
+    # A whole list the model left out comes back, under the master's bold line, after the list
+    # it follows in the master — or at the end of the entry when there is none.
+    for position, master in enumerate(master_lists):
+        current = _bullet_lists(body)
+        if any(cv_list.key == master.key for cv_list in current):
+            continue
+        earlier = {other.key for other in master_lists[:position]}
+        anchor = next((cv_list.end for cv_list in reversed(current) if cv_list.key in earlier), None)
+        if anchor is None:
+            while body and not body[-1].strip():
+                body.pop()
+            anchor = len(body)
+        heading = [master.bold_line, ""] if master.bold_line else []
+        body[anchor:anchor] = ["", *heading, *(f"- {text}" for text in master.texts)]
+    return body
+
+
+def _merged(texts: list[str], master: list[str]) -> list[str]:
+    """The master's bullets, in the CV's order where it kept them word for word."""
+    def same(text: str) -> str:
+        return re.sub(r"\s+", " ", text).strip()
+
+    wanted = {same(text): text for text in master}
+    kept: list[str] = []
+    for text in texts:
+        if same(text) in wanted and wanted[same(text)] not in kept:
+            kept.append(wanted[same(text)])
+    for position, text in enumerate(master):
+        if text in kept:
+            continue
+        before = [index for index, other in enumerate(kept) if other in master[:position]]
+        kept.insert(before[-1] + 1 if before else 0, text)
+    return kept
 
 
 def _entry_intros(markdown: str) -> dict[str, list[str]]:
