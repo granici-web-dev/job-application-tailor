@@ -1,6 +1,7 @@
 from backend.page_limit import (
     collapse_early_roles,
     drop_irrelevant_skill_group,
+    drop_second_project,
     fit_to_page_limit,
     trim_older_roles,
 )
@@ -273,4 +274,68 @@ def test_without_posting_terms_the_groups_still_go_down_to_four_before_the_layou
 
     assert len(_labels(fitted.markdown)) == 4
     assert fitted.layout == CvLayout(compact_spacing=True)
+
+
+PROJECTS_CV = """# Serghei Granici
+
+## Projekte
+
+### Website für eine Arztpraxis (Moldau)
+
+_2026 – heute_
+
+- Website in drei Sprachen
+
+### CRM-Digest-Bot für ein Möbelunternehmen (Rumänien)
+
+_09/2026 – heute_
+
+- Berichte aus dem CRM
+
+**Tech-Stack:** Python
+
+---
+
+## Kenntnisse
+
+**Frontend:** React
+"""
+
+
+def test_the_second_project_goes_and_the_first_stays():
+    shorter, dropped = drop_second_project(PROJECTS_CV)
+
+    assert dropped == ["CRM-Digest-Bot für ein Möbelunternehmen (Rumänien)"]
+    assert shorter == (
+        "# Serghei Granici\n\n## Projekte\n\n### Website für eine Arztpraxis (Moldau)\n\n"
+        "_2026 – heute_\n\n- Website in drei Sprachen\n\n---\n\n## Kenntnisse\n\n**Frontend:** React\n"
+    )
+
+
+def test_a_single_project_is_never_dropped():
+    shorter, _ = drop_second_project(PROJECTS_CV)
+
+    assert drop_second_project(shorter) == (shorter, [])
+
+
+def test_the_second_project_goes_after_the_skill_groups_and_before_the_layout():
+    def render(markdown, layout):
+        render.calls.append(markdown)
+        return b"%PDF", 3 if "CRM-Digest-Bot" in markdown else 2
+
+    render.calls = []
+    cv = PROJECTS_CV.replace("**Frontend:** React\n", "".join(f"**G{n}:** Agile\n\n" for n in range(6)))
+
+    fitted = fit_to_page_limit(cv, render, ["react"])
+
+    assert fitted.pages == 2
+    assert fitted.layout == DEFAULT_CV_LAYOUT
+    assert fitted.markdown.count("**G") == 4  # the skill groups went first, down to four
+    assert all("CRM-Digest-Bot" in markdown for markdown in render.calls[:-1])
+
+
+def test_the_second_project_stays_when_the_cv_already_fits():
+    fitted = fit_to_page_limit(PROJECTS_CV, lambda markdown, layout: (b"%PDF", 2))
+
+    assert "CRM-Digest-Bot" in fitted.markdown
 

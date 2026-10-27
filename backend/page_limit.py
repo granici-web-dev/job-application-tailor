@@ -3,8 +3,8 @@
 The limit is in the prompt, and the model reads it as advice: runs came out at three pages,
 and asking again with the page count in hand never brought one down. So the pipeline
 measures the rendered PDF and shortens here, in a fixed order: first the content, oldest
-roles first, then the skill groups the posting has no use for, then the layout, within floors
-that keep the page readable.
+roles first, then the skill groups the posting has no use for, then the second project, then
+the layout, within floors that keep the page readable.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ MIN_SKILL_GROUPS = 4
 
 SECTION = re.compile(r"^##\s+\S")
 ENTRY = re.compile(r"^###\s+(.*?)\s*$")
+PROJECT_SECTION = re.compile(r"^##\s*(projekte|projects)\b", re.IGNORECASE)
 EXPERIENCE_SECTION = re.compile(
     r"^##\s*(berufserfahrung|beruflicher werdegang|werdegang|experience|employment)", re.IGNORECASE
 )
@@ -168,6 +169,33 @@ def _names_posting_term(body: str, posting_terms: Sequence[str]) -> bool:
     )
 
 
+def drop_second_project(cv_markdown: str) -> tuple[str, list[str]]:
+    """Take the second project out of the Projekte section; the first one stays.
+
+    The tailoring step has put the project that matters most for the posting first. Returns
+    the CV and the heading of the project it dropped, if there were two or more.
+    """
+    lines = cv_markdown.splitlines()
+    section = next((index for index, line in enumerate(lines) if PROJECT_SECTION.match(line)), None)
+    if section is None:
+        return cv_markdown, []
+    end = next((index for index in range(section + 1, len(lines)) if SECTION.match(lines[index])), len(lines))
+    entries = [index for index in range(section + 1, end) if ENTRY.match(lines[index])]
+    if len(entries) < 2:
+        return cv_markdown, []
+    start = entries[1]
+    stop = entries[2] if len(entries) > 2 else end
+    # A closing rule before the next section belongs to the layout, not to the project.
+    while stop > start and (not lines[stop - 1].strip() or lines[stop - 1].strip().startswith("---")):
+        stop -= 1
+    # The blank lines before it go too; the ones after it stay to separate what follows.
+    cut = start
+    while cut > section + 1 and not lines[cut - 1].strip():
+        cut -= 1
+    rebuilt = "\n".join(lines[:cut] + lines[stop:])
+    return (rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt), [ENTRY.match(lines[start]).group(1)]
+
+
 Render = Callable[[str, CvLayout], tuple[bytes, int]]
 
 
@@ -202,7 +230,7 @@ def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[
 
     Content first — only the oldest roles' bullets go, never a title or a date, so what is
     left has already passed the fact check — then, one at a time, the skill groups that name
-    none of `posting_terms`, then the layout, within its floors. A CV that still does not
+    none of `posting_terms`, then the second project, then the layout, within its floors. A CV that still does not
     fit goes out as it is, with a warning: a third page is better than a stopped application.
     """
     layout = DEFAULT_CV_LAYOUT
@@ -228,6 +256,13 @@ def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[
         pdf, shorter_pages = render(shorter, layout)
         logger.warning("CV was %d pages; dropped skill group: %s -> %d pages", pages, dropped[0], shorter_pages)
         cv_markdown, pages = shorter, shorter_pages
+
+    if pages > MAX_CV_PAGES:
+        shorter, dropped = drop_second_project(cv_markdown)
+        if dropped:
+            pdf, shorter_pages = render(shorter, layout)
+            logger.warning("CV was %d pages; dropped the second project: %s -> %d pages", pages, dropped[0], shorter_pages)
+            cv_markdown, pages = shorter, shorter_pages
 
     for description, adjust in _LAYOUT_STEPS:
         if pages <= MAX_CV_PAGES:
