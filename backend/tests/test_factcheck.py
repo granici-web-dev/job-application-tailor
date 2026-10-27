@@ -384,3 +384,15 @@ def test_a_sentence_about_the_position_as_a_whole_may_draw_on_all_its_projects()
     )
 
     assert _check_letter(letter) == []
+
+
+def test_the_head_of_a_project_compound_alone_does_not_mention_the_project():
+    master = MASTER.replace(
+        "- UI/UX für Web-Anwendungen", "- UI/UX für Web-Anwendungen und Printmedien für Unternehmen"
+    ).replace(
+        "## Ausbildung",
+        "### CRM-Digest-Bot für ein Möbelunternehmen (Rumänien)\n\n_09/2026 – heute_\n\n"
+        "- Telegram-Bot für Berichte aus dem CRM\n\n## Ausbildung",
+    )
+
+    assert check_cv(master, master, posting_terms=[]) == []

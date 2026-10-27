@@ -421,7 +421,8 @@ def _names_same(token: str, anchor: str) -> bool:
     German builds names by compounding: "Kinderarztpraxis" contains "Kinderarzt", and
     "Arztpraxis" shares its head with "Ernährungspraxis". A shared ending of five letters
     between two long words is that head. An inflected form ("bestehend" for "bestehendes")
-    differs from the name by an ending of a letter or two.
+    differs from the name by an ending of a letter or two. The head alone ("Unternehmen" for
+    "Möbelunternehmen") names nothing: it is the word the compound narrows down.
     """
     if token == anchor:
         return True
@@ -431,6 +432,8 @@ def _names_same(token: str, anchor: str) -> bool:
         return True
     if len(token) >= 6 and anchor.startswith(token) and len(anchor) - len(token) <= 2:
         return True
+    if anchor.endswith(token):
+        return False
     return min(len(token), len(anchor)) >= 9 and _common_suffix(token, anchor) >= 5
 
 
