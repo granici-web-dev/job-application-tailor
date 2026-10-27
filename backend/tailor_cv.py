@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from anthropic import Anthropic
@@ -33,6 +33,8 @@ PROJECTS_HEADING = re.compile(r"^##\s*(projekte|projects)\b", re.IGNORECASE)
 PROJECT_ENTRY = re.compile(r"^###\s+\S")
 # The disciplines a project speaks to, on its own line under its dates: `_Tags: engineering, ai_`.
 PROJECT_TAGS = re.compile(r"^\s*_Tags:\s*([^_]*)_\s*$", re.IGNORECASE)
+# The sentence the cover letter tells the project in: `_Letter: Daneben habe ich …_`.
+PROJECT_LETTER = re.compile(r"^\s*_Letter:\s*(.*?)_\s*$", re.IGNORECASE)
 # A variant of the summary in the master CV: `### Profil (design)` under `## Profil`.
 SUMMARY_VARIANT = re.compile(r"^###\s+.*\((\w+)\)\s*$")
 # Which summary variant each discipline gets; an unclassified posting gets the engineering one.
@@ -195,45 +197,80 @@ def move_education_before_experience(cv_markdown: str) -> str:
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
 
 
+@dataclass(frozen=True)
+class _Project:
+    tags: frozenset[str]
+    # The sentence the cover letter tells this project in, from its `_Letter: …_` line.
+    letter: str | None
+    lines: tuple[str, ...]
+
+
 def with_relevant_projects(master_markdown: str, discipline: str | None) -> str:
     """The master CV with only the projects tagged for this discipline, and no tag lines.
 
     Two projects do not fit on two pages next to twelve years of experience, and the one
     that speaks to another discipline is the one a reader skips. When no project carries the
-    discipline's tag, or `discipline` is None, every project stays. The tag lines go in any
-    case: they are for this step, not for the reader.
+    discipline's tag, or `discipline` is None, every project stays. The tag and letter lines
+    go in any case: they are for the pipeline, not for the reader.
     """
-    sections = _level_two_sections(master_markdown)
-    projects = next(((start, end) for head, (start, end) in sections if PROJECTS_HEADING.match(head)), None)
-    if projects is None:
+    parsed = _projects(master_markdown)
+    if parsed is None:
         return master_markdown
+    (start, end), intro, projects = parsed
     lines = master_markdown.splitlines()
-    start, end = projects
-    intro: list[str] = []
-    entries: list[tuple[set[str], list[str]]] = []
-    for line in lines[start + 1 : end]:
-        if PROJECT_ENTRY.match(line):
-            entries.append((set(), [line]))
-            continue
-        tags = PROJECT_TAGS.match(line)
-        if tags and entries:
-            entries[-1][0].update(tag.strip().casefold() for tag in tags.group(1).split(","))
-        elif entries:
-            entries[-1][1].append(line)
-        else:
-            intro.append(line)
-
-    kept = [body for tags, body in entries if discipline and discipline in tags]
-    if not kept:
-        kept = [body for _, body in entries]
-    body = [_drop_blank_run(block) for block in kept]
+    body = [_drop_blank_run(list(project.lines)) for project in _relevant(projects, discipline)]
     rebuilt = lines[: start + 1] + intro + [line for block in body for line in block] + lines[end:]
     text = "\n".join(rebuilt)
     return text + "\n" if master_markdown.endswith("\n") else text
 
 
+def project_letter_sentence(master_markdown: str, discipline: str | None) -> str | None:
+    """The letter sentence of the first project the CV keeps for this discipline.
+
+    Same selection and order as the CV's Projekte section, so the letter tells the project
+    the reader also finds in the CV.
+    """
+    parsed = _projects(master_markdown)
+    if parsed is None:
+        return None
+    return next((project.letter for project in _relevant(parsed[2], discipline) if project.letter), None)
+
+
+def _relevant(projects: list[_Project], discipline: str | None) -> list[_Project]:
+    kept = [project for project in projects if discipline and discipline in project.tags]
+    return kept or projects
+
+
+def _projects(master_markdown: str) -> tuple[tuple[int, int], list[str], list[_Project]] | None:
+    """The Projekte section's line range, the lines before its first entry, and its entries."""
+    sections = _level_two_sections(master_markdown)
+    span = next(((start, end) for head, (start, end) in sections if PROJECTS_HEADING.match(head)), None)
+    if span is None:
+        return None
+    start, end = span
+    intro: list[str] = []
+    projects: list[_Project] = []
+    for line in master_markdown.splitlines()[start + 1 : end]:
+        if PROJECT_ENTRY.match(line):
+            projects.append(_Project(frozenset(), None, (line,)))
+            continue
+        if not projects:
+            intro.append(line)
+            continue
+        tags, letter = PROJECT_TAGS.match(line), PROJECT_LETTER.match(line)
+        current = projects[-1]
+        if tags:
+            current = replace(current, tags=current.tags | {tag.strip().casefold() for tag in tags.group(1).split(",")})
+        elif letter:
+            current = replace(current, letter=letter.group(1).strip())
+        else:
+            current = replace(current, lines=current.lines + (line,))
+        projects[-1] = current
+    return span, intro, projects
+
+
 def _drop_blank_run(block: list[str]) -> list[str]:
-    """The entry without the doubled blank line its removed tag line leaves behind."""
+    """The entry without the doubled blank lines its removed tag and letter lines leave behind."""
     collapsed: list[str] = []
     for line in block:
         if not line.strip() and collapsed and not collapsed[-1].strip():

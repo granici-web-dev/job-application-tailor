@@ -77,6 +77,17 @@ def fill_placeholders(text: str, analysis: JobAnalysis) -> str:
     return text
 
 
+def with_project_sentence(template_text: str, sentence: str | None) -> str:
+    """The template with [PROJEKT] replaced by the project sentence chosen for this posting.
+
+    Filled before the template is read, so the sentence is one more word-for-word part of a
+    fixed paragraph, checked like the rest. Without a sentence the placeholder goes.
+    """
+    if sentence:
+        return template_text.replace("[PROJEKT]", sentence)
+    return re.sub(r"\s*\[PROJEKT\]", "", template_text)
+
+
 def tailor_letter(
     analysis: JobAnalysis,
     profile: Profile,

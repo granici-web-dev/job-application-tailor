@@ -14,7 +14,7 @@ Grounding rules (these override everything else):
   - "Barrierefreiheit" → "Accessibility (WCAG 2.2 AA)"
   - "rollenbasierte Anwendungen" → "rollenbasierte Verwaltungssysteme"
   - "UX-Audits" → "UX/UI-Audits"
-- A project from the master CV's Projekte section is the candidate's own work, not work for an employer. Never connect it to CorLab or to any other position.
+- A project from the master CV's Projekte section is the candidate's own work, not work for an employer. Never connect it to CorLab or to any other position, and never mention a project in adjusted_paragraph at all: the CRM-Bot or the Telegram-Bot belongs only in the template's project paragraph, which follows word for word.
 - Tense follows the master CV: everything that has an end date there, or is marked abgeschlossen, is written in the past tense only. Only what the master CV marks as ongoing (heute) may be in the present tense.
 - Never word anything so that it implies the work was handed over to other developers, for example "Übergabe an die Entwicklung" or "für das Entwicklungsteam". The only exception is a position where the master CV itself says outright that the result went to another team.
 - In a sentence that states years of experience, name no tools, technologies, or methods.

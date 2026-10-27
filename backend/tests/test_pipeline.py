@@ -432,3 +432,33 @@ def test_skill_groups_renamed_twice_fall_back_to_the_master_groups(tmp_path):
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert "**Server:**" not in draft
     assert "- **Backend:** Python, FastAPI\n- **Tools:** Docker" in draft
+
+
+def test_the_letter_project_paragraph_is_the_sentence_of_the_discipline_project(tmp_path):
+    master = SHORT_MASTER + (
+        "\n## Projects\n\n### Clinic Website\n\n_2026_\n\n_Tags: design_\n\n"
+        "_Letter: I also built a clinic website._\n\n- Website\n"
+        "\n### Report Bot\n\n_2026_\n\n_Tags: engineering, ai_\n\n"
+        "_Letter: I also built a report bot._\n\n- Reports\n"
+    )
+    profile_dir = _profile_dir_with_master(tmp_path, master)
+    template = (profile_dir / "cover_letter_template.md").read_text(encoding="utf-8")
+    (profile_dir / "cover_letter_template.md").write_text(
+        template.replace("Flask services at Nordwind AG.", "Flask services at Nordwind AG. [PROJEKT]"), encoding="utf-8"
+    )
+    analysis = json.dumps({**json.loads(ANALYSIS_JSON), "discipline": "ai"})
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(analysis),
+        _message(SHORT_MASTER),
+        _message(SHORT_MASTER),
+        _message(LETTER_JSON),
+    ]
+
+    result = _run(tmp_path, profile_dir, client)
+
+    letter = (result.company_dir / "_drafts" / "cover_letter.md").read_text(encoding="utf-8")
+    assert "Flask services at Nordwind AG. I also built a report bot.\n\n" in letter
+    assert "clinic website" not in letter
+    assert "_Letter:" not in _user_messages(client)[1] + _user_messages(client)[3]
+

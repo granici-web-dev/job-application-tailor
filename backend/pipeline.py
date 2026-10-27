@@ -25,6 +25,7 @@ from backend.tailor_cv import (
     put_back_master_summary,
     split_off_summary,
     summary_variant,
+    project_letter_sentence,
     tailor_cv,
     with_relevant_projects,
     with_summary_variant,
@@ -36,6 +37,7 @@ from backend.tailor_letter import (
     restore_template_paragraph,
     tailor_letter,
     template_findings,
+    with_project_sentence,
 )
 from backend.tracker import append_application
 from backend.utils import cover_letter_filename, cv_filename, resolve_unique_company_dir
@@ -80,8 +82,15 @@ def run_pipeline(
     profile = load_profile(profile_dir)
     logger.info("Using the '%s' summary for discipline '%s'", summary_variant(analysis.discipline), analysis.discipline)
     master_cv_markdown = with_summary_variant(profile.master_cv_markdown, analysis.discipline)
-    # The letter keeps every project: its fixed paragraphs name them whatever the posting.
-    profile = replace(profile, master_cv_markdown=with_relevant_projects(master_cv_markdown, None))
+    # The letter's master keeps every project, so the fact check knows each one; its project
+    # paragraph tells the one the CV leads its Projekte with.
+    profile = replace(
+        profile,
+        master_cv_markdown=with_relevant_projects(master_cv_markdown, None),
+        cover_letter_template=with_project_sentence(
+            profile.cover_letter_template, project_letter_sentence(master_cv_markdown, analysis.discipline)
+        ),
+    )
     cv_profile = replace(
         profile, master_cv_markdown=with_relevant_projects(master_cv_markdown, analysis.discipline)
     )

@@ -1,4 +1,5 @@
-from backend.tailor_cv import with_relevant_projects
+from backend.tailor_cv import project_letter_sentence, with_relevant_projects
+from backend.tailor_letter import with_project_sentence
 
 MASTER = """# Serghei Granici
 
@@ -16,6 +17,8 @@ _2026 – heute_
 
 _Tags: engineering, design_
 
+_Letter: Daneben habe ich eine Website gebaut._
+
 - Website in drei Sprachen
 
 ### CRM-Digest-Bot für ein Möbelunternehmen (Rumänien)
@@ -23,6 +26,8 @@ _Tags: engineering, design_
 _09/2026 – heute_
 
 _Tags: engineering, ai, analysis_
+
+_Letter: Daneben habe ich einen Telegram-Bot gebaut._
 
 - Berichte aus dem CRM
 
@@ -46,9 +51,12 @@ def test_a_discipline_both_projects_carry_keeps_both():
     assert "Arztpraxis" in master and "CRM-Digest-Bot" in master
 
 
-def test_the_tag_lines_never_reach_the_cv():
+def test_the_tag_and_letter_lines_never_reach_the_cv():
     for discipline in ("ai", "design", "engineering", "unknown", None):
-        assert "_Tags:" not in with_relevant_projects(MASTER, discipline)
+        master = with_relevant_projects(MASTER, discipline)
+
+        assert "_Tags:" not in master
+        assert "_Letter:" not in master
 
 
 def test_the_entry_keeps_its_layout_without_the_tag_line():
@@ -78,3 +86,29 @@ def test_a_master_cv_without_projects_comes_back_unchanged():
     master = "# Name\n\n## Berufserfahrung\n\n- Arbeit\n"
 
     assert with_relevant_projects(master, "ai") == master
+
+
+def test_the_letter_tells_the_first_project_the_cv_keeps():
+    assert project_letter_sentence(MASTER, "ai") == "Daneben habe ich einen Telegram-Bot gebaut."
+    assert project_letter_sentence(MASTER, "analysis") == "Daneben habe ich einen Telegram-Bot gebaut."
+    assert project_letter_sentence(MASTER, "design") == "Daneben habe ich eine Website gebaut."
+    # Both projects pass: the first in the master CV's order.
+    assert project_letter_sentence(MASTER, "engineering") == "Daneben habe ich eine Website gebaut."
+
+
+def test_with_no_project_for_the_discipline_the_letter_tells_the_first_one():
+    for discipline in ("unknown", None):
+        assert project_letter_sentence(MASTER, discipline) == "Daneben habe ich eine Website gebaut."
+
+
+def test_the_project_sentence_fills_the_template_placeholder():
+    template = "Im Juli 2026 habe ich meine Weiterbildung abgeschlossen. [PROJEKT]\n\nIch stehe bereit."
+
+    assert with_project_sentence(template, "Daneben habe ich eine Website gebaut.") == (
+        "Im Juli 2026 habe ich meine Weiterbildung abgeschlossen. Daneben habe ich eine Website gebaut."
+        "\n\nIch stehe bereit."
+    )
+    assert with_project_sentence(template, None) == (
+        "Im Juli 2026 habe ich meine Weiterbildung abgeschlossen.\n\nIch stehe bereit."
+    )
+
