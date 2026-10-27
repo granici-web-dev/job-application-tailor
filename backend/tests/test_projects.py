@@ -68,11 +68,19 @@ def test_the_entry_keeps_its_layout_without_the_tag_line():
     ) in master
 
 
-def test_every_project_stays_when_none_is_tagged_for_the_discipline():
-    for discipline in ("unknown", None):
-        master = with_relevant_projects(MASTER, discipline)
+def test_the_projects_section_goes_when_no_project_is_tagged_for_the_discipline():
+    master = with_relevant_projects(MASTER, "unknown")
 
-        assert "Arztpraxis" in master and "CRM-Digest-Bot" in master
+    assert "## Projekte" not in master
+    assert "Arztpraxis" not in master and "CRM-Digest-Bot" not in master
+    assert master == MASTER[: MASTER.index("## Projekte")] + "## Ausbildung\n\n### Weiterbildung\n"
+    assert project_letter_sentence(MASTER, "unknown") is None
+
+
+def test_the_letters_master_keeps_every_project_for_the_fact_check():
+    master = with_relevant_projects(MASTER, None)
+
+    assert "Arztpraxis" in master and "CRM-Digest-Bot" in master
 
 
 def test_the_rest_of_the_master_cv_is_untouched():

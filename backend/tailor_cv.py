@@ -214,17 +214,23 @@ class _Project:
 def with_relevant_projects(master_markdown: str, discipline: str | None) -> str:
     """The master CV with only the projects tagged for this discipline, and no tag lines.
 
-    Two projects do not fit on two pages next to twelve years of experience, and the one
-    that speaks to another discipline is the one a reader skips. When no project carries the
-    discipline's tag, or `discipline` is None, every project stays. The tag and letter lines
-    go in any case: they are for the pipeline, not for the reader.
+    A project that speaks to another discipline is the one a reader skips. When no project
+    carries the discipline's tag, the Projekte section goes altogether, so the CV shows the
+    same projects as the letter: none. With `discipline` None — the letter's master, which the
+    fact check reads — every project stays. The tag and letter lines go in any case: they are
+    for the pipeline, not for the reader.
     """
     parsed = _projects(master_markdown)
     if parsed is None:
         return master_markdown
     (start, end), intro, projects = parsed
     lines = master_markdown.splitlines()
-    body = [_drop_blank_run(list(project.lines)) for project in _relevant(projects, discipline)]
+    relevant = _relevant(projects, discipline)
+    if not relevant:
+        rebuilt = lines[:start] + lines[end:]
+        text = "\n".join(rebuilt)
+        return text + "\n" if master_markdown.endswith("\n") else text
+    body = [_drop_blank_run(list(project.lines)) for project in relevant]
     rebuilt = lines[: start + 1] + intro + [line for block in body for line in block] + lines[end:]
     text = "\n".join(rebuilt)
     return text + "\n" if master_markdown.endswith("\n") else text
@@ -240,13 +246,15 @@ def project_letter_sentence(master_markdown: str, discipline: str | None) -> str
     parsed = _projects(master_markdown)
     if parsed is None:
         return None
-    tagged = [project for project in parsed[2] if discipline and discipline in project.tags]
-    return next((project.letter for project in tagged if project.letter), None)
+    if discipline is None:
+        return None
+    return next((project.letter for project in _relevant(parsed[2], discipline) if project.letter), None)
 
 
 def _relevant(projects: list[_Project], discipline: str | None) -> list[_Project]:
-    kept = [project for project in projects if discipline and discipline in project.tags]
-    return kept or projects
+    if discipline is None:
+        return projects
+    return [project for project in projects if discipline in project.tags]
 
 
 def _projects(master_markdown: str) -> tuple[tuple[int, int], list[str], list[_Project]] | None:
