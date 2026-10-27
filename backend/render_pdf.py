@@ -80,6 +80,8 @@ ul { margin: 3pt 0 6pt 16pt; padding: 0; }
 li { margin: 0 0 2pt; }
 a { color: #111111; text-decoration: none; }
 strong { font-weight: 600; color: #111111; }
+/* A section the page limit puts on a page of its own: `## Ausbildung {: .new-page }`. */
+.new-page { break-before: page; }
 """
 
 
@@ -92,15 +94,12 @@ class CvLayout:
     margin_vertical_mm: float = 16
     margin_horizontal_mm: float = 18
     font_pt: float = 10
-    # Bullets and paragraph text only; the section and role headings keep their own sizes.
-    text_pt: float | None = None
 
     def describe(self) -> str:
         spacing = "compact" if self.compact_spacing else "normal"
-        text = f", bullets and paragraphs {self.text_pt:g} pt" if self.text_pt is not None else ""
         return (
             f"spacing {spacing}, margins {self.margin_vertical_mm:g} × "
-            f"{self.margin_horizontal_mm:g} mm, body font {self.font_pt:g} pt{text}"
+            f"{self.margin_horizontal_mm:g} mm, body font {self.font_pt:g} pt"
         )
 
 
@@ -134,9 +133,6 @@ def cv_css(layout: CvLayout = DEFAULT_CV_LAYOUT) -> str:
         )
     if layout.font_pt != DEFAULT_CV_LAYOUT.font_pt:
         parts.append(f"body {{ font-size: {layout.font_pt:g}pt; }}")
-    if layout.text_pt is not None:
-        # h2 and h3 set their own sizes, and the headline's `h1 + p` outranks a bare `p`.
-        parts.append(f"p, li {{ font-size: {layout.text_pt:g}pt; }}")
     return "\n".join(parts)
 
 

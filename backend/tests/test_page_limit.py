@@ -1,6 +1,4 @@
-from dataclasses import replace
-
-from backend.page_limit import drop_irrelevant_skill_group, fit_to_page_limit
+from backend.page_limit import drop_irrelevant_skill_group, fit_to_page_limit, with_education_on_new_page
 from backend.render_pdf import (
     CV_CSS,
     DEFAULT_CV_LAYOUT,
@@ -64,7 +62,7 @@ def test_the_page_count_comes_from_the_rendered_pdf():
     assert render_markdown_with_page_count("# Name", css=CV_CSS)[1] == 1
 
 
-def _render_needing(*, compact=False, margin=None, font=None, text=None):
+def _render_needing(*, compact=False, margin=None, font=None):
     """A fake renderer: 3 pages until every named condition holds, then 2."""
 
     def render(markdown, layout):
@@ -72,7 +70,6 @@ def _render_needing(*, compact=False, margin=None, font=None, text=None):
             (not compact or layout.compact_spacing)
             and (margin is None or layout.margin_vertical_mm <= margin)
             and (font is None or layout.font_pt <= font)
-            and (text is None or (layout.text_pt is not None and layout.text_pt <= text))
         )
         render.calls.append(layout)
         return b"%PDF", 2 if fits else 3
@@ -115,35 +112,34 @@ def test_the_font_never_goes_below_10_pt_and_the_cv_goes_out_anyway():
     assert fitted.pages == 3
     assert fitted.layout.font_pt == 10
     assert fitted.layout.margin_vertical_mm == 15
-    assert fitted.layout.text_pt == 9.5
     assert fitted.pdf == b"%PDF"
 
 
-def test_the_bullets_and_paragraphs_go_to_9_5_pt_only_when_the_other_steps_were_not_enough():
-    full = CvLayout(compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15, text_pt=9.5)
+def test_a_cv_still_over_two_pages_starts_ausbildung_on_a_new_page():
+    fitted = fit_to_page_limit(CV, _render_needing(font=9))
 
-    assert fit_to_page_limit(CV, _render_needing(text=9.5)).layout == full
-    assert fit_to_page_limit(CV, _render_needing(compact=True, margin=15)).layout.text_pt is None
-
-
-def test_the_text_step_leaves_the_headings_at_their_size():
-    css = cv_css(CvLayout(text_pt=9.5))
-
-    assert css.rstrip().endswith("p, li { font-size: 9.5pt; }")
-    assert "h2 {\n  font-size: 11pt;" in css and "h3 { font-size: 10pt;" in css
-    assert CvLayout(text_pt=9.5).describe().endswith("body font 10 pt, bullets and paragraphs 9.5 pt")
+    assert "## Ausbildung {: .new-page }\n" in fitted.markdown
+    assert fitted.markdown.replace(" {: .new-page }", "") == CV
 
 
-def test_smaller_bullets_really_shorten_the_rendered_cv():
-    long_cv = "# Name\n\n## Berufserfahrung\n\n### Eintrag\n\n" + "\n".join(
-        f"- Punkt {n} mit etwas Text, der eine Zeile füllt" for n in range(300)
-    )
-    tight = CvLayout(compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15)
+def test_a_cv_that_fits_gets_no_page_break():
+    assert ".new-page" not in fit_to_page_limit(CV, _render_needing(compact=True)).markdown
 
-    _, before = render_markdown_with_page_count(long_cv, css=cv_css(tight), line_breaks=True)
-    _, after = render_markdown_with_page_count(long_cv, css=cv_css(replace(tight, text_pt=9.5)), line_breaks=True)
 
-    assert after < before
+def test_the_page_break_is_set_once():
+    once = with_education_on_new_page(CV)
+
+    assert with_education_on_new_page(once) == once
+    assert with_education_on_new_page("# Name\n\n## Berufserfahrung\n") == "# Name\n\n## Berufserfahrung\n"
+
+
+def test_the_page_break_really_puts_ausbildung_on_its_own_page():
+    short = "# Name\n\n## Berufserfahrung\n\n- Arbeit\n\n## Ausbildung\n\n- Studium\n\n## Sprachen\n\n- Deutsch\n"
+
+    _, together = render_markdown_with_page_count(short, css=cv_css(), line_breaks=True)
+    _, apart = render_markdown_with_page_count(with_education_on_new_page(short), css=cv_css(), line_breaks=True)
+
+    assert (together, apart) == (1, 2)
 
 
 def test_layout_overrides_are_appended_to_the_base_css():
@@ -345,9 +341,7 @@ def test_every_role_with_every_bullet_and_every_project_stays_after_all_steps():
     fitted = fit_to_page_limit(FULL_CV, render, ["React"])
 
     assert fitted.pages == 3
-    assert fitted.layout == CvLayout(
-        compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15, font_pt=10, text_pt=9.5
-    )
+    assert fitted.layout == CvLayout(compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15, font_pt=10)
     assert _section(fitted.markdown, "## Berufserfahrung") == _section(FULL_CV, "## Berufserfahrung")
     assert fitted.markdown.count("\n### ") == 7  # five roles, two projects
     assert _section(fitted.markdown, "## Projekte") == _section(FULL_CV, "## Projekte")
