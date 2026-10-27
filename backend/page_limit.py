@@ -27,19 +27,28 @@ MIN_MARGIN_MM = 15
 MIN_FONT_PT = 10
 FONT_STEP_PT = 0.5
 # Skill groups naming nothing the posting asks for go, down to this many groups.
-MIN_SKILL_GROUPS = 4
+MIN_SKILL_GROUPS = 5
+# Groups that stay whatever the posting names: Docker, Vercel and CI always count for a
+# developer, even where the posting does not list them.
+KEPT_SKILL_GROUPS = {"engineering": ("DevOps & Tools",), "ai": ("DevOps & Tools",)}
 
 SECTION_LINE = re.compile(r"^##\s+\S")
 NEW_PAGE = "{: .new-page }"
 
 
-def drop_irrelevant_skill_group(cv_markdown: str, posting_terms: Sequence[str]) -> tuple[str, list[str]]:
+def kept_skill_groups(discipline: str) -> tuple[str, ...]:
+    return KEPT_SKILL_GROUPS.get(discipline, ())
+
+
+def drop_irrelevant_skill_group(
+    cv_markdown: str, posting_terms: Sequence[str], kept: Sequence[str] = ()
+) -> tuple[str, list[str]]:
     """Take out the last skill group that names none of the posting's terms.
 
     The last one first: the tailoring step has ordered the groups by relevance. Matching
     ignores case and runs both ways, so "REST API" in a group answers a posting's "REST
-    APIs", and "React" answers "React". At MIN_SKILL_GROUPS groups nothing more goes.
-    Returns the CV and the label it dropped, if any.
+    APIs", and "React" answers "React". A group labelled as in `kept` never goes, and at
+    MIN_SKILL_GROUPS groups nothing more goes. Returns the CV and the label it dropped, if any.
     """
     lines = cv_markdown.splitlines()
     groups: list[tuple[int, str, str]] = []
@@ -55,7 +64,7 @@ def drop_irrelevant_skill_group(cv_markdown: str, posting_terms: Sequence[str]) 
         return cv_markdown, []
 
     for index, label, body in reversed(groups):
-        if _names_posting_term(body, posting_terms):
+        if label in kept or _names_posting_term(body, posting_terms):
             continue
         # The blank line after a group goes with it, so no gap is left behind.
         end = index + 1
@@ -123,12 +132,16 @@ _LAYOUT_STEPS = (
 
 
 def fit_to_page_limit(
-    cv_markdown: str, render: Render, posting_terms: Sequence[str] = (), locate: Locate | None = None
+    cv_markdown: str,
+    render: Render,
+    posting_terms: Sequence[str] = (),
+    locate: Locate | None = None,
+    kept_groups: Sequence[str] = (),
 ) -> FittedCv:
     """The CV shortened without the model until it fits MAX_CV_PAGES, or as far as allowed.
 
-    One at a time, the skill groups that name none of `posting_terms`, down to
-    MIN_SKILL_GROUPS; then the layout, within its floors. Roles, bullets and projects are never
+    One at a time, the skill groups that name none of `posting_terms` and are not in
+    `kept_groups`, down to MIN_SKILL_GROUPS; then the layout, within its floors. Roles, bullets and projects are never
     touched. A CV that still does not fit keeps its length; with `locate`, the last section
     laid out across two pages starts a new one instead — when it then fits whole on that page
     and no page is added.
@@ -138,7 +151,7 @@ def fit_to_page_limit(
     logger.info("CV rendered to %d pages", pages)
 
     while pages > MAX_CV_PAGES:
-        shorter, dropped = drop_irrelevant_skill_group(cv_markdown, posting_terms)
+        shorter, dropped = drop_irrelevant_skill_group(cv_markdown, posting_terms, kept_groups)
         if not dropped:
             break
         pdf, shorter_pages = render(shorter, layout)

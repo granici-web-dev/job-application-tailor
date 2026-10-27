@@ -1,5 +1,6 @@
 from backend.page_limit import (
     drop_irrelevant_skill_group,
+    kept_skill_groups,
     fit_to_page_limit,
     last_split_section,
     with_new_page_before,
@@ -289,34 +290,54 @@ def test_matching_ignores_case_and_runs_both_ways():
     assert dropped_by_case == ["Methoden"]
 
 
-def test_four_groups_always_stay():
+def test_five_groups_always_stay():
     cv, dropped = SKILLS_CV, ["start"]
     while dropped:
         cv, dropped = drop_irrelevant_skill_group(cv, [])
 
-    assert len(_labels(cv)) == 4
+    assert len(_labels(cv)) == 5
+
+
+DEVOPS_CV = SKILLS_CV.replace(
+    "**Methoden:** Agile, Kanban", "**Methoden:** Agile, Kanban\n\n**DevOps & Tools:** Docker, Vercel, GitHub Actions"
+)
+
+
+def test_devops_stays_for_a_developer_posting_and_goes_otherwise():
+    for discipline in ("engineering", "ai"):
+        shorter, dropped = drop_irrelevant_skill_group(DEVOPS_CV, TERMS, kept_skill_groups(discipline))
+        assert dropped == ["Methoden"]
+        assert "**DevOps & Tools:**" in shorter
+    for discipline in ("design", "analysis", "unknown"):
+        assert drop_irrelevant_skill_group(DEVOPS_CV, TERMS, kept_skill_groups(discipline))[1] == ["DevOps & Tools"]
+
+
+def test_the_kept_groups_reach_the_fitting():
+    fitted = fit_to_page_limit(DEVOPS_CV, lambda markdown, layout: (b"%PDF", 3), TERMS, kept_groups=("DevOps & Tools",))
+
+    assert _labels(fitted.markdown) == ["Frontend", "Backend & Daten", "UI/UX Design", "Qualität", "DevOps & Tools"]
 
 
 def test_skill_groups_go_before_the_layout():
     def render(markdown, layout):
         render.calls.append(layout)
-        return b"%PDF", 2 if len(_labels(markdown)) <= 4 else 3
+        return b"%PDF", 2 if len(_labels(markdown)) <= 5 else 3
 
     render.calls = []
 
     fitted = fit_to_page_limit(SKILLS_CV, render, TERMS)
 
     assert fitted.pages == 2
-    assert _labels(fitted.markdown) == ["Frontend", "Backend & Daten", "UI/UX Design", "Qualität"]
+    assert _labels(fitted.markdown) == ["Frontend", "Backend & Daten", "UI/UX Design", "AI & Tools", "Qualität"]
     assert fitted.layout == DEFAULT_CV_LAYOUT  # the layout was never touched
 
 
-def test_without_posting_terms_the_groups_still_go_down_to_four_before_the_layout():
+def test_without_posting_terms_the_groups_still_go_down_to_five_before_the_layout():
     render = _render_needing(compact=True)
 
     fitted = fit_to_page_limit(SKILLS_CV, render)
 
-    assert len(_labels(fitted.markdown)) == 4
+    assert len(_labels(fitted.markdown)) == 5
     assert fitted.layout == CvLayout(compact_spacing=True)
 
 
@@ -411,4 +432,4 @@ def test_every_role_with_every_bullet_and_every_project_stays_after_all_steps():
     assert _section(fitted.markdown, "## Berufserfahrung") == _section(FULL_CV, "## Berufserfahrung")
     assert fitted.markdown.count("\n### ") == 7  # five roles, two projects
     assert _section(fitted.markdown, "## Projekte") == _section(FULL_CV, "## Projekte")
-    assert len(_labels(_section(fitted.markdown, "## Kenntnisse"))) == 4  # only the skill groups went
+    assert len(_labels(_section(fitted.markdown, "## Kenntnisse"))) == 5  # only the skill groups went

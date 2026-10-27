@@ -17,7 +17,7 @@ from backend.headline import cv_headline, cv_language, position_name
 from backend.humanize import humanize
 from backend.models import JobAnalysis
 from backend.profile import load_photo_bytes, load_profile
-from backend.page_limit import fit_to_page_limit
+from backend.page_limit import fit_to_page_limit, kept_skill_groups
 from backend.render_pdf import (
     CvLayout,
     cv_css,
@@ -196,7 +196,11 @@ def run_pipeline(
         )
 
     fitted = fit_to_page_limit(
-        finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv, posting_terms, locate_sections
+        finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")),
+        render_cv,
+        posting_terms,
+        locate_sections,
+        kept_groups=kept_skill_groups(analysis.discipline),
     )
     cv_markdown, cv_pdf = fitted.markdown, fitted.pdf
 
