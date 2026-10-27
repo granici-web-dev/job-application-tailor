@@ -64,3 +64,9 @@ def test_job_analysis_coerces_missing_lists_to_empty():
 
     assert analysis.keywords == []
     assert analysis.language_requirements == []
+
+
+def test_job_analysis_keeps_the_ai_discipline():
+    analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="ai"))
+
+    assert analysis.discipline == "ai"

@@ -135,3 +135,7 @@ def test_unclassified_posting_leaves_the_prompts_as_they_were():
 
     assert "## Emphasis for this posting" not in cv_message
     assert "## Emphasis for this posting" not in letter_message
+
+
+def test_an_ai_posting_gets_the_engineering_emphasis():
+    assert emphasis_instruction("ai", kind="cv") == emphasis_instruction("engineering", kind="cv")

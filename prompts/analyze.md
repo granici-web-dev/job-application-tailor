@@ -8,7 +8,7 @@ The JSON object must have exactly these keys:
   "company_name": "string",
   "employee_count": "string or null",
   "job_title": "string",
-  "discipline": "design | engineering | analysis | unknown",
+  "discipline": "design | engineering | analysis | ai | unknown",
   "employment_type": "remote | onsite | hybrid | unknown",
   "location": "string or null",
   "contact_person": "string or null",
@@ -26,6 +26,7 @@ Rules:
   - Use `design` when the work is mainly UI/UX, product, visual or brand design, or user research — typical titles are UI/UX Designer, Product Designer, Webdesigner, Grafikdesigner, Art Director.
   - Use `engineering` when the work is mainly writing code — typical titles are Frontend Developer, Fullstack Developer, Software Engineer, Web Developer.
   - Use `analysis` when the work is mainly gathering and specifying requirements between the business side and development — typical titles are Business Analyst, Product Owner, Requirements Engineer.
+  - Use `ai` when the work is mainly building on language models or automating processes with them — typical titles are AI Engineer, LLM-Entwickler, AI Automation Engineer, KI-Entwickler. A developer role that merely uses AI tools while coding is `engineering`.
   - For a hybrid role (Design Engineer, Design Technologist, a designer expected to ship code), weigh the responsibilities and required skills; if they are genuinely balanced, decide by the noun the title ends on — Designer means design, Developer or Engineer means engineering.
   - Use `unknown` only when the role is neither, for example marketing, sales, or project management.
 - `employment_type` is one of remote, onsite, hybrid, or unknown. If the posting is ambiguous, use unknown.

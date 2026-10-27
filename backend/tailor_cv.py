@@ -29,10 +29,19 @@ EXPERIENCE_HEADING = re.compile(
 EDUCATION_HEADING = re.compile(r"^##\s*(ausbildung|education)", re.IGNORECASE)
 SUMMARY_HEADING = re.compile(r"^##\s*(profil|kurzprofil|summary|profile)\b", re.IGNORECASE)
 SEPARATOR = re.compile(r"^\s*(---+)?\s*$")
+PROJECTS_HEADING = re.compile(r"^##\s*(projekte|projects)\b", re.IGNORECASE)
+PROJECT_ENTRY = re.compile(r"^###\s+\S")
+# The disciplines a project speaks to, on its own line under its dates: `_Tags: engineering, ai_`.
+PROJECT_TAGS = re.compile(r"^\s*_Tags:\s*([^_]*)_\s*$", re.IGNORECASE)
 # A variant of the summary in the master CV: `### Profil (design)` under `## Profil`.
 SUMMARY_VARIANT = re.compile(r"^###\s+.*\((\w+)\)\s*$")
 # Which summary variant each discipline gets; an unclassified posting gets the engineering one.
-SUMMARY_VARIANT_BY_DISCIPLINE = {"engineering": "engineering", "design": "design", "analysis": "analysis"}
+SUMMARY_VARIANT_BY_DISCIPLINE = {
+    "engineering": "engineering",
+    "design": "design",
+    "analysis": "analysis",
+    "ai": "engineering",
+}
 DEFAULT_SUMMARY_VARIANT = "engineering"
 
 
@@ -184,6 +193,53 @@ def move_education_before_experience(cv_markdown: str) -> str:
 
     rebuilt = "\n".join(preamble + [line for block in blocks for line in block])
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def with_relevant_projects(master_markdown: str, discipline: str | None) -> str:
+    """The master CV with only the projects tagged for this discipline, and no tag lines.
+
+    Two projects do not fit on two pages next to twelve years of experience, and the one
+    that speaks to another discipline is the one a reader skips. When no project carries the
+    discipline's tag, or `discipline` is None, every project stays. The tag lines go in any
+    case: they are for this step, not for the reader.
+    """
+    sections = _level_two_sections(master_markdown)
+    projects = next(((start, end) for head, (start, end) in sections if PROJECTS_HEADING.match(head)), None)
+    if projects is None:
+        return master_markdown
+    lines = master_markdown.splitlines()
+    start, end = projects
+    intro: list[str] = []
+    entries: list[tuple[set[str], list[str]]] = []
+    for line in lines[start + 1 : end]:
+        if PROJECT_ENTRY.match(line):
+            entries.append((set(), [line]))
+            continue
+        tags = PROJECT_TAGS.match(line)
+        if tags and entries:
+            entries[-1][0].update(tag.strip().casefold() for tag in tags.group(1).split(","))
+        elif entries:
+            entries[-1][1].append(line)
+        else:
+            intro.append(line)
+
+    kept = [body for tags, body in entries if discipline and discipline in tags]
+    if not kept:
+        kept = [body for _, body in entries]
+    body = [_drop_blank_run(block) for block in kept]
+    rebuilt = lines[: start + 1] + intro + [line for block in body for line in block] + lines[end:]
+    text = "\n".join(rebuilt)
+    return text + "\n" if master_markdown.endswith("\n") else text
+
+
+def _drop_blank_run(block: list[str]) -> list[str]:
+    """The entry without the doubled blank line its removed tag line leaves behind."""
+    collapsed: list[str] = []
+    for line in block:
+        if not line.strip() and collapsed and not collapsed[-1].strip():
+            continue
+        collapsed.append(line)
+    return collapsed
 
 
 def summary_variant(discipline: str) -> str:

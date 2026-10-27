@@ -110,6 +110,7 @@ UI/UX- und Produktexperte mit über 10 Jahren Erfahrung.
         ("engineering", "Fullstack-Entwickler"),
         ("design", "Senior UI/UX Designer"),
         ("analysis", "UI/UX- und Produktexperte"),
+        ("ai", "Fullstack-Entwickler"),
         ("unknown", "Fullstack-Entwickler"),
     ],
 )

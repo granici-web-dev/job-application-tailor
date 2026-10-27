@@ -89,9 +89,13 @@ _LETTER_INSTRUCTIONS = {
 _BY_KIND = {"cv": _CV_INSTRUCTIONS, "cover_letter": _LETTER_INSTRUCTIONS}
 
 
+# An AI posting hires a developer who builds on language models: the engineering emphasis.
+_SAME_EMPHASIS_AS = {"ai": "engineering"}
+
+
 def emphasis_instruction(discipline: str, *, kind: str) -> str:
     """The ordering instruction for one document, or "" when the posting fits neither track."""
-    return _BY_KIND[kind].get(discipline, "")
+    return _BY_KIND[kind].get(_SAME_EMPHASIS_AS.get(discipline, discipline), "")
 
 
 def emphasis_section(discipline: str, *, kind: str) -> list[str]:

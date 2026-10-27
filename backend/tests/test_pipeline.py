@@ -391,3 +391,27 @@ def test_a_headline_fixed_on_the_retry_is_kept(tmp_path):
 
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
     assert draft.startswith("# Ivan Petrov\n\n**AI Engineer · Full-Stack Developer**\n")
+
+
+def test_the_cv_gets_only_the_projects_for_the_discipline_and_the_letter_gets_all(tmp_path):
+    master = SHORT_MASTER + (
+        "\n## Projects\n\n### Clinic Website\n\n_2026_\n\n_Tags: design_\n\n- Website\n"
+        "\n### Report Bot\n\n_2026_\n\n_Tags: engineering, ai_\n\n- Reports\n"
+    )
+    analysis = json.dumps({**json.loads(ANALYSIS_JSON), "discipline": "ai"})
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(analysis),
+        _message(SHORT_MASTER),
+        _message(SHORT_MASTER),
+        _message(LETTER_JSON),
+    ]
+
+    _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
+
+    cv_request, letter_request = _user_messages(client)[1], _user_messages(client)[3]
+    assert "Report Bot" in cv_request
+    assert "Clinic Website" not in cv_request
+    assert "Report Bot" in letter_request and "Clinic Website" in letter_request
+    assert "_Tags:" not in cv_request + letter_request
+

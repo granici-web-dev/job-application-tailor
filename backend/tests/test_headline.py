@@ -72,3 +72,8 @@ def test_the_headline_and_language_are_read_from_the_cv():
     assert cv_language(cv) == "de"
     assert read_headline("# Serghei Granici\n\nWacholderweg 6\n\n## Profil\n") is None
     assert cv_language("# Ivan Petrov\n\n## Summary\n") == "en"
+
+
+def test_an_ai_posting_defaults_to_the_ai_headline():
+    assert default_headline("ai", "de") == "AI Engineer · Fullstack-Entwickler"
+    assert default_headline("ai", "en") == "AI Engineer · Full-Stack Developer"

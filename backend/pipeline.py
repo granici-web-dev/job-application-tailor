@@ -25,6 +25,7 @@ from backend.tailor_cv import (
     split_off_summary,
     summary_variant,
     tailor_cv,
+    with_relevant_projects,
     with_summary_variant,
 )
 from backend.tailor_letter import (
@@ -77,8 +78,11 @@ def run_pipeline(
     logger.info("Loading profile from %s", profile_dir)
     profile = load_profile(profile_dir)
     logger.info("Using the '%s' summary for discipline '%s'", summary_variant(analysis.discipline), analysis.discipline)
-    profile = replace(
-        profile, master_cv_markdown=with_summary_variant(profile.master_cv_markdown, analysis.discipline)
+    master_cv_markdown = with_summary_variant(profile.master_cv_markdown, analysis.discipline)
+    # The letter keeps every project: its fixed paragraphs name them whatever the posting.
+    profile = replace(profile, master_cv_markdown=with_relevant_projects(master_cv_markdown, None))
+    cv_profile = replace(
+        profile, master_cv_markdown=with_relevant_projects(master_cv_markdown, analysis.discipline)
     )
 
     logger.info("Tailoring CV and cover letter for %s", analysis.company_name)
@@ -95,13 +99,13 @@ def run_pipeline(
 
     def draft_cv(feedback: str | None) -> str:
         nonlocal headline_misses
-        cv = tailor_cv(analysis, profile, client=client, model=model, language=language, feedback=feedback)
+        cv = tailor_cv(analysis, cv_profile, client=client, model=model, language=language, feedback=feedback)
         headline = read_headline(cv)
         # The summary is the master CV's paragraph, untouched by humanize; the fact check
         # still reads it, since it runs on the whole CV.
         cv, summary = split_off_summary(cv)
         cv = humanize(cv, kind="cv", client=client, model=model)
-        cv = put_back_master_summary(cv, summary, profile.master_cv_markdown)
+        cv = put_back_master_summary(cv, summary, cv_profile.master_cv_markdown)
         if headline_findings(headline, job_title=analysis.job_title, language=cv_language(cv)):
             headline_misses += 1
             # One retry for the headline; after that the discipline's default stands in for it
@@ -121,7 +125,7 @@ def run_pipeline(
         )
         return headline + check_cv(
             cv,
-            profile.master_cv_markdown,
+            cv_profile.master_cv_markdown,
             posting_terms=posting_terms,
             allowed_text=allowed_text,
             posting_names=posting_names,

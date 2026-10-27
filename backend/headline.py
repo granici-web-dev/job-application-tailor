@@ -48,6 +48,7 @@ DEFAULT_HEADLINES = {
     "engineering": ("Design Engineer", "Fullstack-Entwickler"),
     "design": ("Senior UI/UX Designer", "Design Engineer"),
     "analysis": ("Business Analyst", "UI/UX Designer", "Fullstack-Entwickler"),
+    "ai": ("AI Engineer", "Fullstack-Entwickler"),
 }
 DEFAULT_DISCIPLINE = "engineering"
 
