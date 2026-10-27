@@ -1,0 +1,522 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Job Application Tailor
+      - navigation [ref=e7]:
+        - link "Сгенерировать" [ref=e8] [cursor=pointer]:
+          - /url: /generate
+        - link "Заявки" [active] [ref=e9] [cursor=pointer]:
+          - /url: /applications
+  - main [ref=e19]:
+    - generic [ref=e20]:
+      - heading "Заявки" [level=1] [ref=e21]
+      - paragraph [ref=e22]: История сгенерированных заявок. Статус синхронизируется с Excel-трекером.
+    - group "Фильтр заявок" [ref=e24]:
+      - button "Активные" [pressed] [ref=e25] [cursor=pointer]
+      - button "Скрытые" [ref=e26] [cursor=pointer]
+    - table [ref=e28]:
+      - rowgroup [ref=e29]:
+        - row [ref=e30]:
+          - columnheader "Фирма" [ref=e31]
+          - columnheader "Сотрудники" [ref=e32]
+          - columnheader "Вакансия" [ref=e33]
+          - columnheader "Тип" [ref=e34]
+          - columnheader "Должность" [ref=e35]
+          - columnheader "Город" [ref=e36]
+          - columnheader "Статус" [ref=e37]
+          - columnheader "Дата" [ref=e38]
+          - columnheader "Действия" [ref=e39]
+      - rowgroup [ref=e40]:
+        - row [ref=e41]:
+          - cell "Weissenberg Group GmbH" [ref=e42]
+          - cell "51-200" [ref=e43]
+          - cell [ref=e44]:
+            - link "Открыть" [ref=e45] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/duesseldorf-junior-frontend-developer-fokus-ai-ui-ux-150924299?ijt=jb_55
+          - cell "Гибрид" [ref=e50]
+          - cell "Junior Frontend Developer (m/w/d) – Fokus AI & UI/UX" [ref=e51]
+          - cell "—" [ref=e52]
+          - cell [ref=e53]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e54] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "01.06.2026" [ref=e56]
+          - cell [ref=e57]:
+            - generic [ref=e58]:
+              - button "CV" [ref=e59] [cursor=pointer]
+              - button "Письмо" [ref=e62] [cursor=pointer]
+              - button "Скрыть" [ref=e65] [cursor=pointer]
+        - row [ref=e71]:
+          - cell "PwC Deutschland" [ref=e72]
+          - cell "10001+" [ref=e73]
+          - cell [ref=e74]:
+            - link "Открыть" [ref=e75] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4407024587&eBP=CwEAAAGejKQ6LV01Hzpvxefn7gYFkw0WHQCsv8am-ZK1EE6Wqgiq_2RP7yldifEtgVgR_92k0nIO6GXH6z3nHBNGOvOvDi4crI-jLbB-aGxuCnCftNszKlzEktF22Gvi7mTaFLZUL2gXD7_Bwxkb60VTWLy7pY4rhWw_SlIeZEYlTau5y33zlrHN2vXYEzPfkYqDeJX8-19Nb_UHhTqC8akiZvaHismh7mRPKOU7RVkqK4adbPzJjM0_gjtW2heUxIubVz0DB7JGIoOTTuvFZudwe9136pkamxM5tgdditEJ8zW1pEnm5y6_4SJD4guHDyAoBZgGmMXkt1HfNfaCjsEab0lwjMjmuodGZTRfag9zYtCeSmT6ruOrkFmCb7wsJL0XkalxHMlTWrOzvfW9budJlBhivhHH4Vg4GeTyD_1-f1f0lKTziOmDAK_RHjoFa2DUZiTMSkA8BIORZViVEqI3xVkgSGGj_8iXS9-XOQ80yA&refId=E3T4kqFxMn1Qo7%2FS5rbOnQ%3D%3D&trackingId=CtViG6qFD9U2XvIW4SKfMg%3D%3D&keywords=Junior%20Frontend&origin=JOBS_HOME_SEARCH_BUTTON
+          - cell "Гибрид" [ref=e80]
+          - cell "Frontend-Developer - Public Sector & Energy (w/m/d)" [ref=e81]
+          - cell "Deutschland" [ref=e82]
+          - cell [ref=e83]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e84] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.06.2026" [ref=e86]
+          - cell [ref=e87]:
+            - generic [ref=e88]:
+              - button "CV" [ref=e89] [cursor=pointer]
+              - button "Письмо" [ref=e92] [cursor=pointer]
+              - button "Скрыть" [ref=e95] [cursor=pointer]
+        - row [ref=e101]:
+          - cell "Tagueri AG" [ref=e102]
+          - cell "501-1000" [ref=e103]
+          - cell [ref=e104]:
+            - link "Открыть" [ref=e105] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4372040152&eBP=CwEAAAGejLL-qxigSpHOyb3npfWj0BWZMkudPb_PRsHQ8aA6wnOtvaM7Z8n73RGTGcMLugM8RPXxt5St8jqrI6a3foVsCic6LT7n0eVLoLSW5Z0MOR0WDKHBIt-EZuNSPc6hidwXCGlLapwx_V-E3x4timnblGVpBlPr1iUlfYoI8w5jMLe-YnahlqrRO2-noxCc-9yKg4Q_QNOtozDZ5hbK01I6Tctjkq9PLPObjdt1S8nebsbAlCvSoG_jGy5tgGOFcIjixndGitgtE4od4T_rnl6UgOH9ANlE6IuPuwnVFpQIu9c56T3U3Sl7AbGUfJ_OMKaln-qPf7AQZnlV1E9WgyUobkO0L0GIankQ1stF7uvUZMdxhqphk7exxNV7yN1bAV_TF7P6Jjqbt1tE-OjWR6sVo2o81rJUxzAIHlsYdK46yP7s0NuBNx6c5IkLounUgjc0grEexkXhTRVbFFUl-HWVPhrFgBGCB1jT&refId=wUr0u92u2pMEnOvcH2Jn2g%3D%3D&trackingId=ETONEF0jsyKwgf%2F9U0fvbw%3D%3D&keywords=Junior%20Frontend&origin=JOBS_HOME_SEARCH_BUTTON&start=0
+          - cell "Гибрид" [ref=e110]
+          - cell "Junior Consultant Fullstack Development (m/w/d)" [ref=e111]
+          - cell "Deutschland" [ref=e112]
+          - cell [ref=e113]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e114] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.06.2026" [ref=e116]
+          - cell [ref=e117]:
+            - generic [ref=e118]:
+              - button "CV" [ref=e119] [cursor=pointer]
+              - button "Письмо" [ref=e122] [cursor=pointer]
+              - button "Скрыть" [ref=e125] [cursor=pointer]
+        - row [ref=e131]:
+          - cell "consulting1x1 GmbH" [ref=e132]
+          - cell "11-50" [ref=e133]
+          - cell [ref=e134]:
+            - link "Открыть" [ref=e135] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4422602856&eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=U5okjnq6zOji%2FKY8st2p6A%3D%3D&trackingId=7t0MCCuEYhRup6Ra%2F2%2FSOQ%3D%3D&keywords=Junior%20Frontend&origin=JOB_SEARCH_PAGE_JOB_FILTER&referralSearchId=gJPgAgNHz3BY9yfNET79Nw%3D%3D&f_SAL=f_SA_id_227001%3A276001
+          - cell "н/д" [ref=e140]
+          - cell "Frontend Developer (M/W/D)" [ref=e141]
+          - cell "—" [ref=e142]
+          - cell [ref=e143]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e144] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.06.2026" [ref=e146]
+          - cell [ref=e147]:
+            - generic [ref=e148]:
+              - button "CV" [ref=e149] [cursor=pointer]
+              - button "Письмо" [ref=e152] [cursor=pointer]
+              - button "Скрыть" [ref=e155] [cursor=pointer]
+        - row [ref=e161]:
+          - cell "New Monday GmbH" [ref=e162]
+          - cell "1-10" [ref=e163]
+          - cell [ref=e164]:
+            - link "Открыть" [ref=e165] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/berlin-senior-ui-designer-155904332?ijt=jb_55
+          - cell "Удалённо" [ref=e170]
+          - cell "(Senior) UI Designer (w/m/d)" [ref=e171]
+          - cell "Berlin, Deutschland" [ref=e172]
+          - cell [ref=e173]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e174] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "15.07.2026" [ref=e176]
+          - cell [ref=e177]:
+            - generic [ref=e178]:
+              - button "CV" [ref=e179] [cursor=pointer]
+              - button "Письмо" [ref=e182] [cursor=pointer]
+              - button "Скрыть" [ref=e185] [cursor=pointer]
+        - row [ref=e191]:
+          - cell "Entrex e.K." [ref=e192]
+          - cell "н/д" [ref=e193]
+          - cell [ref=e194]:
+            - link "Открыть" [ref=e195] [cursor=pointer]:
+              - /url: https://www.entrex.de/jobs/stellen/ui-designer.php
+          - cell "Офис" [ref=e200]
+          - cell "UI-Designer (m/w/d)" [ref=e201]
+          - cell "—" [ref=e202]
+          - cell [ref=e203]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e204] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "21.07.2026" [ref=e206]
+          - cell [ref=e207]:
+            - generic [ref=e208]:
+              - button "CV" [ref=e209] [cursor=pointer]
+              - button "Письмо" [ref=e212] [cursor=pointer]
+              - button "Скрыть" [ref=e215] [cursor=pointer]
+        - row [ref=e221]:
+          - cell "Reifenhäuser NEXT" [ref=e222]
+          - cell "н/д" [ref=e223]
+          - cell [ref=e224]:
+            - link "Открыть" [ref=e225] [cursor=pointer]:
+              - /url: https://re-gmbh.jobs.personio.de/job/2682041?display=de&language=de&pid=f96250fb-a4a9-429b-9af2-e34a14f164e3&it=OaF9c9pihogjxl1FHiw9iw&_ghcid=5e2023e2-cae5-4c20-8895-f98bb3352f5f&source=Indeed
+          - cell "Гибрид" [ref=e230]
+          - cell "(Junior) Software Developer (m/w/d)" [ref=e231]
+          - cell "Köln, Deutschland" [ref=e232]
+          - cell [ref=e233]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e234] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "26.07.2026" [ref=e236]
+          - cell [ref=e237]:
+            - generic [ref=e238]:
+              - button "CV" [ref=e239] [cursor=pointer]
+              - button "Письмо" [ref=e242] [cursor=pointer]
+              - button "Скрыть" [ref=e245] [cursor=pointer]
+        - row [ref=e251]:
+          - cell "CHECK24 Vergleichsportal Individualreisen GmbH" [ref=e252]
+          - cell "н/д" [ref=e253]
+          - cell [ref=e254]:
+            - link "Открыть" [ref=e255] [cursor=pointer]:
+              - /url: https://jobs.check24.de/de/jobs/app-web-full-stack-inkl-devops/ref559v-junior-fullstack-entwickler-mwd-individualreisen/?query=%28Junior%29+Fullstack+Entwickler+%28m%2Fw%2Fd%29+Individualreisen
+          - cell "Гибрид" [ref=e260]
+          - cell "(Junior) Fullstack Entwickler (m/w/d) Individualreisen" [ref=e261]
+          - cell "Düsseldorf" [ref=e262]
+          - cell [ref=e263]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e264] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "28.07.2026" [ref=e266]
+          - cell [ref=e267]:
+            - generic [ref=e268]:
+              - button "CV" [ref=e269] [cursor=pointer]
+              - button "Письмо" [ref=e272] [cursor=pointer]
+              - button "Скрыть" [ref=e275] [cursor=pointer]
+        - row [ref=e281]:
+          - cell "PwC Deutschland" [ref=e282]
+          - cell "н/д" [ref=e283]
+          - cell [ref=e284]:
+            - link "Открыть" [ref=e285] [cursor=pointer]:
+              - /url: https://jobs.pwc.de/de/de/job/2507/UI-UX-Designer---Public-Sector--Energy-w-m-d
+          - cell "н/д" [ref=e290]
+          - cell "UI/UX-Designer - Public Sector & Energy (w/m/d)" [ref=e291]
+          - cell "Berlin, Germany" [ref=e292]
+          - cell [ref=e293]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e294] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "29.07.2026" [ref=e296]
+          - cell [ref=e297]:
+            - generic [ref=e298]:
+              - button "CV" [ref=e299] [cursor=pointer]
+              - button "Письмо" [ref=e302] [cursor=pointer]
+              - button "Скрыть" [ref=e305] [cursor=pointer]
+        - row [ref=e311]:
+          - cell "JTL" [ref=e312]
+          - cell "н/д" [ref=e313]
+          - cell [ref=e314]:
+            - link "Открыть" [ref=e315] [cursor=pointer]:
+              - /url: https://www.jtl-software.com/de/jobs/senior-product-designer-w-m-d-huerth-berlin-mobiles-arbeiten/
+          - cell "Гибрид" [ref=e320]
+          - cell "Senior Product Designer (w/m/d)" [ref=e321]
+          - cell "Hürth / Köln oder Berlin" [ref=e322]
+          - cell [ref=e323]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e324] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "29.07.2026" [ref=e326]
+          - cell [ref=e327]:
+            - generic [ref=e328]:
+              - button "CV" [ref=e329] [cursor=pointer]
+              - button "Письмо" [ref=e332] [cursor=pointer]
+              - button "Скрыть" [ref=e335] [cursor=pointer]
+        - row [ref=e341]:
+          - cell "Aschert & Bohrmann GmbH" [ref=e342]
+          - cell "н/д" [ref=e343]
+          - cell [ref=e344]:
+            - link "Открыть" [ref=e345] [cursor=pointer]:
+              - /url: https://talents.studysmarter.de/companies/aschert-bohrmann-gmbh/kommunikationsdesigner-m-w-d-mit-schwerpunkt-ux-ui-design-1500130/
+          - cell "Офис" [ref=e350]
+          - cell "Kommunikationsdesigner (m/w/d) mit Schwerpunkt UX/UI Design" [ref=e351]
+          - cell "Siegburg" [ref=e352]
+          - cell [ref=e353]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e354] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "29.07.2026" [ref=e356]
+          - cell [ref=e357]:
+            - generic [ref=e358]:
+              - button "CV" [ref=e359] [cursor=pointer]
+              - button "Письмо" [ref=e362] [cursor=pointer]
+              - button "Скрыть" [ref=e365] [cursor=pointer]
+        - row [ref=e371]:
+          - cell "Passion for People (im Auftrag eines Mandanten)" [ref=e372]
+          - cell "н/д" [ref=e373]
+          - cell [ref=e374]:
+            - link "Открыть" [ref=e375] [cursor=pointer]:
+              - /url: https://jobs.passionforpeople.de/job/senior-product-designer-ux-ui-w-m-d-fuer-technologieberatung-im-bankingumfeld-frankfurt-am-main/
+          - cell "Гибрид" [ref=e380]
+          - cell "Senior Product Designer UX/UI (w/m/d)" [ref=e381]
+          - cell "Frankfurt am Main, Hessen" [ref=e382]
+          - cell [ref=e383]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e384] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "29.07.2026" [ref=e386]
+          - cell [ref=e387]:
+            - generic [ref=e388]:
+              - button "CV" [ref=e389] [cursor=pointer]
+              - button "Письмо" [ref=e392] [cursor=pointer]
+              - button "Скрыть" [ref=e395] [cursor=pointer]
+        - row [ref=e401]:
+          - cell "SISTRIX" [ref=e402]
+          - cell "н/д" [ref=e403]
+          - cell [ref=e404]:
+            - link "Открыть" [ref=e405] [cursor=pointer]:
+              - /url: https://www.sistrix.de/karriere/jobs/
+          - cell "Офис" [ref=e410]
+          - cell "UX/UI Design Specialist (m/w/x)" [ref=e411]
+          - cell "Bonn" [ref=e412]
+          - cell [ref=e413]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e414] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "29.07.2026" [ref=e416]
+          - cell [ref=e417]:
+            - generic [ref=e418]:
+              - button "CV" [ref=e419] [cursor=pointer]
+              - button "Письмо" [ref=e422] [cursor=pointer]
+              - button "Скрыть" [ref=e425] [cursor=pointer]
+        - row [ref=e431]:
+          - cell "Bechtle AG" [ref=e432]
+          - cell "н/д" [ref=e433]
+          - cell [ref=e434]:
+            - link "Открыть" [ref=e435] [cursor=pointer]:
+              - /url: https://jobs.bechtle.com/job/Sankt-Augustin-UXUI-Designer-(wmd)-53757/83013-de_DE/?feedId=434457&utm_source=LinkedIn&utm_campaign=xmlFeed
+          - cell "н/д" [ref=e440]
+          - cell "UX/UI Designer (w/m/d)" [ref=e441]
+          - cell "—" [ref=e442]
+          - cell [ref=e443]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e444] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.08.2026" [ref=e446]
+          - cell [ref=e447]:
+            - generic [ref=e448]:
+              - button "CV" [ref=e449] [cursor=pointer]
+              - button "Письмо" [ref=e452] [cursor=pointer]
+              - button "Скрыть" [ref=e455] [cursor=pointer]
+        - row [ref=e461]:
+          - cell "Allgeier IT GmbH" [ref=e462]
+          - cell "500" [ref=e463]
+          - cell [ref=e464]:
+            - link "Открыть" [ref=e465] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/bonn-ux-ui-designer-156632704?ijt=jb_55
+          - cell "Гибрид" [ref=e470]
+          - cell "UX/UI Designer (m/w/d)" [ref=e471]
+          - cell "Bonn" [ref=e472]
+          - cell [ref=e473]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e474] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.08.2026" [ref=e476]
+          - cell [ref=e477]:
+            - generic [ref=e478]:
+              - button "CV" [ref=e479] [cursor=pointer]
+              - button "Письмо" [ref=e482] [cursor=pointer]
+              - button "Скрыть" [ref=e485] [cursor=pointer]
+        - row [ref=e491]:
+          - cell "FourByte GmbH" [ref=e492]
+          - cell "н/д" [ref=e493]
+          - cell [ref=e494]:
+            - link "Открыть" [ref=e495] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/koeln-product-designer-152699438?ijt=jb_55
+          - cell "Гибрид" [ref=e500]
+          - cell "Product Designer (m/w/d)" [ref=e501]
+          - cell "Köln" [ref=e502]
+          - cell [ref=e503]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e504] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.08.2026" [ref=e506]
+          - cell [ref=e507]:
+            - generic [ref=e508]:
+              - button "CV" [ref=e509] [cursor=pointer]
+              - button "Письмо" [ref=e512] [cursor=pointer]
+              - button "Скрыть" [ref=e515] [cursor=pointer]
+        - row [ref=e521]:
+          - cell "ilert GmbH" [ref=e522]
+          - cell "1-10" [ref=e523]
+          - cell [ref=e524]:
+            - link "Открыть" [ref=e525] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/cologne-senior-product-designer-agentic-ai-platform-149055371?ijt=jb_40
+          - cell "Гибрид" [ref=e530]
+          - cell "Senior Product Designer (f/m/x) - Agentic AI & Platform" [ref=e531]
+          - cell "Köln (Rheinauhafen)" [ref=e532]
+          - cell [ref=e533]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e534] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.08.2026" [ref=e536]
+          - cell [ref=e537]:
+            - generic [ref=e538]:
+              - button "CV" [ref=e539] [cursor=pointer]
+              - button "Письмо" [ref=e542] [cursor=pointer]
+              - button "Скрыть" [ref=e545] [cursor=pointer]
+        - row [ref=e551]:
+          - cell "terrestris" [ref=e552]
+          - cell "н/д" [ref=e553]
+          - cell [ref=e554]:
+            - link "Открыть" [ref=e555] [cursor=pointer]:
+              - /url: https://terrestris.de/wp-content/uploads/2026/08/2026-07-29-stellenausschreibung-junior-developer.pdf
+          - cell "Гибрид" [ref=e560]
+          - cell "Junior Web Developer (Frontend) (m/w/d)" [ref=e561]
+          - cell "Bonn" [ref=e562]
+          - cell [ref=e563]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e564] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "08.08.2026" [ref=e566]
+          - cell [ref=e567]:
+            - generic [ref=e568]:
+              - button "CV" [ref=e569] [cursor=pointer]
+              - button "Письмо" [ref=e572] [cursor=pointer]
+              - button "Скрыть" [ref=e575] [cursor=pointer]
+        - row [ref=e581]:
+          - cell "Kampmann Group" [ref=e582]
+          - cell "1.000+" [ref=e583]
+          - cell [ref=e584]:
+            - link "Открыть" [ref=e585] [cursor=pointer]:
+              - /url: https://karriere.kampmann.de/de/jobs/junior-frontend-engineer-m-w-d-748
+          - cell "Гибрид" [ref=e590]
+          - cell "Junior Frontend Engineer (m/w/d)" [ref=e591]
+          - cell "Lingen (Ems)" [ref=e592]
+          - cell [ref=e593]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e594] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e596]
+          - cell [ref=e597]:
+            - generic [ref=e598]:
+              - button "CV" [ref=e599] [cursor=pointer]
+              - button "Письмо" [ref=e602] [cursor=pointer]
+              - button "Скрыть" [ref=e605] [cursor=pointer]
+        - row [ref=e611]:
+          - cell "Accenture" [ref=e612]
+          - cell "775000" [ref=e613]
+          - cell [ref=e614]:
+            - link "Открыть" [ref=e615] [cursor=pointer]:
+              - /url: https://www.accenture.com/at-de/careers/jobdetails?id=R00330201_de&title=(Junior)+Frontend+Engineer+(all+genders)
+          - cell "Гибрид" [ref=e620]
+          - cell "(Junior) Frontend Engineer (all genders)" [ref=e621]
+          - cell "Innsbruck" [ref=e622]
+          - cell [ref=e623]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e624] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e626]
+          - cell [ref=e627]:
+            - generic [ref=e628]:
+              - button "CV" [ref=e629] [cursor=pointer]
+              - button "Письмо" [ref=e632] [cursor=pointer]
+              - button "Скрыть" [ref=e635] [cursor=pointer]
+        - row [ref=e641]:
+          - cell "Foto Erhardt GmbH" [ref=e642]
+          - cell "200" [ref=e643]
+          - cell [ref=e644]:
+            - link "Открыть" [ref=e645] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/westerkappeln-junior-frontend-entwickler-voll-teilzeit-westerkappeln-156344379
+          - cell "Гибрид" [ref=e650]
+          - cell "Junior Frontend Entwickler (m/w/d)" [ref=e651]
+          - cell "Westerkappeln" [ref=e652]
+          - cell [ref=e653]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e654] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e656]
+          - cell [ref=e657]:
+            - generic [ref=e658]:
+              - button "CV" [ref=e659] [cursor=pointer]
+              - button "Письмо" [ref=e662] [cursor=pointer]
+              - button "Скрыть" [ref=e665] [cursor=pointer]
+        - row [ref=e671]:
+          - cell "NotarPartner GmbH" [ref=e672]
+          - cell "н/д" [ref=e673]
+          - cell [ref=e674]:
+            - link "Открыть" [ref=e675] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/hamburg-junior-fullstack-engineer-ts-react-next-js-ai-100-remote-157128668?ijt=jb_55
+          - cell "Удалённо" [ref=e680]
+          - cell "Junior Fullstack Engineer (m/w/d) TS, React, Next.js & AI" [ref=e681]
+          - cell "Deutschland (100% Remote)" [ref=e682]
+          - cell [ref=e683]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e684] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e686]
+          - cell [ref=e687]:
+            - generic [ref=e688]:
+              - button "CV" [ref=e689] [cursor=pointer]
+              - button "Письмо" [ref=e692] [cursor=pointer]
+              - button "Скрыть" [ref=e695] [cursor=pointer]
+        - row [ref=e701]:
+          - cell "AthariCommerce" [ref=e702]
+          - cell "1-10" [ref=e703]
+          - cell [ref=e704]:
+            - link "Открыть" [ref=e705] [cursor=pointer]:
+              - /url: https://join.com/companies/atharicommerce/16545851-junior-frontend-developer-fuer-shopify-m-w-d-vollzeit?pid=e65242534431eadcb0c9
+          - cell "Офис" [ref=e710]
+          - cell "Junior Frontend Developer für Shopify (m/w/d)" [ref=e711]
+          - cell "Köln, Deutschland" [ref=e712]
+          - cell [ref=e713]:
+            - 'button "Статус: НЕ ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e714] [cursor=pointer]': НЕ ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e716]
+          - cell [ref=e717]:
+            - generic [ref=e718]:
+              - button "CV" [ref=e719] [cursor=pointer]
+              - button "Письмо" [ref=e722] [cursor=pointer]
+              - button "Скрыть" [ref=e725] [cursor=pointer]
+        - row [ref=e731]:
+          - cell "undisclosed (via Ryan Delaney / DACH tech talent partner)" [ref=e732]
+          - cell "н/д" [ref=e733]
+          - cell [ref=e734]:
+            - link "Открыть" [ref=e735] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4455702585&eBP=CwEAAAGgGjsXz7m6WHBjNJz4y7oeGNcxKgmFnnfXLmDJXqXdSVe29kVYr4o-IgrtgQeD91cRH-SgB4vISFW9kZ7LUBTmv-t8w3HeDsNcQPb0TlcOAtO-0zkwfvJ-wCcWjpq_Thy9w8qp59uMcFNicMh4L_QfgFcT3FTkMM7z_qr4dNa0MIutdzzVGwHzzdiuXXZDDsVjboR4fFzJ8A4Wp51SPzuBlKzk5VKnFHhX_pe1-hA8GQVwAXPaUWJ41ym2QzD2798OaIDpXD2BzlMX6bxbgDyrQ1VtA5Odl8y-0_q9WbuDI1vYxtAaGTyOkDom8OCzBw3hNRataEyz0IsKDH0ZrIbR9l2wkDlf_5Th7EaHgnkPtJX-Qcb4i9bqlzGx8SNPgsk9EHQNnFAc3cu26iaOYmFoF7vz75hESMzzrHclAizwO89hTzS3IGDtsM-0_8LnDN-jQ-Fl1b_tXwzETH-0TbP1X2tXWakEiPKT5Zh2gToQ&refId=q1GIWMrIv12seaWYdsMFkg%3D%3D&trackingId=zbhnpdP9jWWLKoSbNlN2Lw%3D%3D&keywords=Junior%20Frontend&origin=JOBS_HOME_SEARCH_BUTTON
+          - cell "Удалённо" [ref=e740]
+          - cell "Junior Software Engineer - Typescript AI" [ref=e741]
+          - cell "Germany" [ref=e742]
+          - cell [ref=e743]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e744] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e746]
+          - cell [ref=e747]:
+            - generic [ref=e748]:
+              - button "CV" [ref=e749] [cursor=pointer]
+              - button "Письмо" [ref=e752] [cursor=pointer]
+              - button "Скрыть" [ref=e755] [cursor=pointer]
+        - row [ref=e761]:
+          - cell "SEOLabs" [ref=e762]
+          - cell "н/д" [ref=e763]
+          - cell [ref=e764]:
+            - link "Открыть" [ref=e765] [cursor=pointer]:
+              - /url: https://www.seo-labs.de/stellenanzeigen/junior-web-entwickler
+          - cell "Офис" [ref=e770]
+          - cell "Junior Web Entwickler / Designer (m/w/d)" [ref=e771]
+          - cell "München (Schwabing)" [ref=e772]
+          - cell [ref=e773]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e774] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "19.08.2026" [ref=e776]
+          - cell [ref=e777]:
+            - generic [ref=e778]:
+              - button "CV" [ref=e779] [cursor=pointer]
+              - button "Письмо" [ref=e782] [cursor=pointer]
+              - button "Скрыть" [ref=e785] [cursor=pointer]
+        - row [ref=e791]:
+          - cell "Stone Bridge GmbH" [ref=e792]
+          - cell "11-50" [ref=e793]
+          - cell [ref=e794]:
+            - link "Открыть" [ref=e795] [cursor=pointer]:
+              - /url: https://join.com/companies/stone-bridgede/16617629-ki-frontend-experience-engineer-m-w-d?pid=e65242534431eadcb0c9
+          - cell "Гибрид" [ref=e800]
+          - cell "KI-Frontend Experience Engineer (m/w/d)" [ref=e801]
+          - cell "Neu-Ulm, Deutschland" [ref=e802]
+          - cell [ref=e803]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e804] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "26.08.2026" [ref=e806]
+          - cell [ref=e807]:
+            - generic [ref=e808]:
+              - button "CV" [ref=e809] [cursor=pointer]
+              - button "Письмо" [ref=e812] [cursor=pointer]
+              - button "Скрыть" [ref=e815] [cursor=pointer]
+        - row [ref=e821]:
+          - cell "THRYVE" [ref=e822]
+          - cell "н/д" [ref=e823]
+          - cell [ref=e824]:
+            - link "Открыть" [ref=e825] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4458770816&eBP=NON_CHARGEABLE_CHANNEL&refId=UJBsR7dT5T7z2ZB%2FMIfUnA%3D%3D&trackingId=b%2FkHm9pxC%2FxJUu43Aw2hEw%3D%3D&keywords=THRYVE&origin=SEMANTIC_SEARCH_LANDING_PAGE
+          - cell "Удалённо" [ref=e830]
+          - cell "Junior Software Engineer" [ref=e831]
+          - cell "Germany" [ref=e832]
+          - cell [ref=e833]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e834] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.09.2026" [ref=e836]
+          - cell [ref=e837]:
+            - generic [ref=e838]:
+              - button "CV" [ref=e839] [cursor=pointer]
+              - button "Письмо" [ref=e842] [cursor=pointer]
+              - button "Скрыть" [ref=e845] [cursor=pointer]
+        - row [ref=e851]:
+          - cell "LEWO" [ref=e852]
+          - cell "н/д" [ref=e853]
+          - cell [ref=e854]:
+            - link "Открыть" [ref=e855] [cursor=pointer]:
+              - /url: https://www.linkedin.com/jobs/search-results/?currentJobId=4449462420&eBP=NOT_ELIGIBLE_FOR_CHARGING&refId=K5kRtR4YbPDN9uJvihdFGg%3D%3D&trackingId=q9G04rhSUGKvt4ZFEZl3cg%3D%3D&keywords=Junior%20Frontend&origin=SEMANTIC_SEARCH_LANDING_PAGE
+          - cell "Удалённо" [ref=e860]
+          - cell "Junior Frontend Entwickler/in (m/w/d)" [ref=e861]
+          - cell "Trier" [ref=e862]
+          - cell [ref=e863]:
+            - 'button "Статус: ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e864] [cursor=pointer]': ОТПРАВЛЕНО
+          - cell "03.09.2026" [ref=e866]
+          - cell [ref=e867]:
+            - generic [ref=e868]:
+              - button "CV" [ref=e869] [cursor=pointer]
+              - button "Письмо" [ref=e872] [cursor=pointer]
+              - button "Скрыть" [ref=e875] [cursor=pointer]
+        - row [ref=e881]:
+          - cell "Hornetsecurity GmbH" [ref=e882]
+          - cell "201-500" [ref=e883]
+          - cell [ref=e884]:
+            - link "Открыть" [ref=e885] [cursor=pointer]:
+              - /url: https://www.xing.com/jobs/hannover-junior-process-automation-engineer-homeoffice-157342005?ijt=jb_55
+          - cell "Гибрид" [ref=e890]
+          - cell "Junior Process Automation Engineer" [ref=e891]
+          - cell "Hannover" [ref=e892]
+          - cell [ref=e893]:
+            - 'button "Статус: НЕ ОТПРАВЛЕНО. Нажмите, чтобы переключить." [ref=e894] [cursor=pointer]': НЕ ОТПРАВЛЕНО
+          - cell "03.09.2026" [ref=e896]
+          - cell [ref=e897]:
+            - generic [ref=e898]:
+              - button "CV" [ref=e899] [cursor=pointer]
+              - button "Письмо" [ref=e902] [cursor=pointer]
+              - button "Скрыть" [ref=e905] [cursor=pointer]

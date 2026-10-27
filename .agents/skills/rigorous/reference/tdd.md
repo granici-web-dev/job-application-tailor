@@ -6,6 +6,16 @@ Strict red → green → refactor cycle. Use when the project's `TESTING.md` or 
 
 Same as craft. `shape` is required for non-trivial work. `tdd` extends `craft` discipline by enforcing test-first ordering.
 
+## Seams — agree where behavior is asserted, before the first test
+
+Before writing the first red test, name the **seams**: the public boundaries where the new behavior will be observed and asserted. A seam is a contract surface — a module's exported function, an HTTP endpoint, a CLI invocation, a DB row shape you own — never an internal helper.
+
+- List them in one short block (3–6 lines: `seam: POST /api/bundles — returns 201 + id`, `seam: computeTotals(order) — exported from pricing.ts`).
+- **Confirm them**: the shape plan's test-plan section names them (shape.md requires it) — then shape approval covers seams too. If the approved plan predates that requirement or names no seams, state them in one short block and get a one-line confirmation before the first red test. When shape wasn't required (trivial work), state the seam in one line and proceed.
+- Tests live **only at agreed seams**, and assert **behavior only**. No reaching into internals, no asserting call counts on private functions, no importing un-exported symbols in tests.
+- The payoff: internal restructuring never breaks tests. If a refactor breaks a test, either the seam list was wrong or the test grabbed internals — fix the test, not the refactor.
+- If a behavior can't be asserted at any agreed seam, the seam list is incomplete — stop, extend it, re-confirm. Don't quietly test through an internal because it's convenient.
+
 ## The cycle, per behavior
 
 For each piece of behavior to add (one assertion at a time):

@@ -68,6 +68,8 @@ A short doc, ~1–2 pages, with sections for each of the five questions. Diagram
 
 End with **3 strengths** and **3 weaknesses**. Be willing to say a system is well-architected. Equally willing to say it's tangled. The goal is honest assessment, not balanced theater.
 
+**When the verdict is "restructure":** don't ship a single target design that won by being first. Produce **two competing target designs** — via parallel subagents with clean briefs when the harness has them, sequentially and steelmanned when it doesn't — each with its module map, migration plan, cost estimate, and risks. Recommend one; keep the loser's cost/risk table in the doc so the user sees why. A recommendation without a costed alternative is an opinion, not a review. (When the verdict is "the system is fine", none of this applies — say so and stop.)
+
 ## Common findings to look out for
 
 - **Premature microservices.** App split into 5 services on day 1, each owning a slice the team is still figuring out.

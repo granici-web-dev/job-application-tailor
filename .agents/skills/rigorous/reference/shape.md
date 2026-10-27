@@ -34,7 +34,7 @@ The user must read this in <90 seconds. Aim for ~25 lines. Sections in this orde
 <empty if none, otherwise: column adds, route signatures, breaking changes>
 
 ## Test plan
-<which tests prove this works — unit / integration / manual?>
+<which tests prove this works — unit / integration / manual? — and the seams they assert at: exported function / endpoint / CLI / owned row shape>
 
 ## Tradeoffs / alternatives considered
 <2-3 alternatives you rejected and why. If you didn't consider any, you didn't shape — go think harder>
@@ -51,11 +51,25 @@ The user must read this in <90 seconds. Aim for ~25 lines. Sections in this orde
 
 **Schema changes are not handwaves.** Spell the migration. If a column type or nullability is ambiguous, state your choice and the reason.
 
-**Test plan is part of the design.** "I'll write tests" is not a test plan. Name the test cases. If you can't name them, the design is not concrete enough yet.
+**Test plan is part of the design.** "I'll write tests" is not a test plan. Name the test cases AND the seams (public contract surfaces — exported function, endpoint, CLI, owned row shape) they assert at; `tdd` treats the approved seams as the agreed test surface. If you can't name them, the design is not concrete enough yet.
 
 **Tradeoffs are mandatory.** Every non-trivial design has alternatives. List 2–3. If you can only think of one path, you didn't think about it.
 
 **Open questions stay open.** Don't paper over uncertainty in the plan. List it. The user will answer or accept the risk.
+
+## Contested shapes — competing designs
+
+Most shapes have one obviously right approach; write the plan and move on. But when the design is **genuinely contested**, don't let the first idea win by default. Contested means any of:
+
+- Two or more plausible architectures with different long-term costs (sync vs queue, embed vs extract, buy vs build).
+- High blast radius: schema migration, public API change, a new layer or service.
+- The user is explicitly asking "what's the best way to do X".
+
+For contested shapes: generate **2–3 genuinely different candidate approaches** before writing the plan. When the harness provides a subagent tool, dispatch them in parallel — each candidate gets a clean brief (goal, constraints, posture docs, relevant code paths) and returns approach + file map + tradeoffs + risks; without subagents, develop the candidates yourself sequentially, honestly (steelman each one — a strawman alternative is worse than none).
+
+Then judge: pick one, and fold the losers into "Tradeoffs / alternatives considered" with the **real** reasons they lost — costs and risks, not "felt worse". The output is still the same one-page plan; the user sees one recommendation, not a menu.
+
+Everyday shapes skip all of this. Spawning three agents to plan a CRUD endpoint is ceremony — the thing this skill exists to kill.
 
 ## Confirmation gate
 

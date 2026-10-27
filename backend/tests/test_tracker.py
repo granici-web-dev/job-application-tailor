@@ -10,10 +10,13 @@ from backend.models import JobAnalysis
 from backend.tracker import (
     COVER_LETTER_FILE_HEADER,
     CV_FILE_HEADER,
+    DISCIPLINE_HEADER,
     EMPLOYEE_COUNT_UNKNOWN,
     HEADERS,
     HIDDEN_HEADER,
     LOCATION_HEADER,
+    RULES_VERSION,
+    RULES_VERSION_HEADER,
     STATUS_NOT_SENT,
     STATUS_SENT,
     append_application,
@@ -87,6 +90,8 @@ def test_append_adds_row_with_values_and_na_employee_count(tmp_path):
         None,
         None,
         None,
+        "unknown",
+        RULES_VERSION,
     ]
 
 
@@ -298,3 +303,64 @@ def test_append_raises_tracker_error_when_file_is_locked(tmp_path):
     with patch("backend.tracker.Workbook.save", side_effect=PermissionError):
         with pytest.raises(TrackerError, match="open in Excel"):
             append_application(path, _analysis(), job_url="https://x/1", created_on=date(2026, 6, 1))
+
+
+def test_append_records_the_discipline_and_the_rules_version(tmp_path):
+    tracker = tmp_path / "tracker.xlsx"
+
+    append_application(
+        tracker,
+        _analysis(discipline="engineering"),
+        job_url="https://x/1",
+        created_on=date(2026, 8, 9),
+    )
+
+    sheet = load_workbook(tracker).active
+    discipline_column = HEADERS.index(DISCIPLINE_HEADER) + 1
+    version_column = HEADERS.index(RULES_VERSION_HEADER) + 1
+    assert sheet.cell(row=1, column=discipline_column).value == DISCIPLINE_HEADER
+    assert sheet.cell(row=1, column=version_column).value == RULES_VERSION_HEADER
+    assert sheet.cell(row=2, column=discipline_column).value == "engineering"
+    assert sheet.cell(row=2, column=version_column).value == RULES_VERSION
+
+
+def test_a_posting_that_fits_neither_track_is_recorded_as_unknown(tmp_path):
+    tracker = tmp_path / "tracker.xlsx"
+
+    append_application(
+        tracker,
+        _analysis(discipline="Projektmanagement"),
+        job_url="https://x/1",
+        created_on=date(2026, 8, 9),
+    )
+
+    sheet = load_workbook(tracker).active
+    assert sheet.cell(row=2, column=HEADERS.index(DISCIPLINE_HEADER) + 1).value == "unknown"
+
+
+def test_a_tracker_without_the_cohort_columns_gains_them_and_keeps_its_rows(tmp_path):
+    tracker = tmp_path / "tracker.xlsx"
+    _legacy_tracker(tracker)
+
+    append_application(
+        tracker,
+        _analysis(company_name="Beta GmbH", discipline="design"),
+        job_url="https://x/2",
+        created_on=date(2026, 8, 9),
+    )
+
+    sheet = load_workbook(tracker).active
+    discipline_column = HEADERS.index(DISCIPLINE_HEADER) + 1
+    assert sheet.cell(row=1, column=discipline_column).value == DISCIPLINE_HEADER
+    assert sheet.cell(row=2, column=1).value == "Acme GmbH"
+    assert sheet.cell(row=2, column=discipline_column).value is None
+    assert sheet.cell(row=3, column=discipline_column).value == "design"
+
+
+def test_reading_a_tracker_without_the_cohort_columns_still_works(tmp_path):
+    tracker = tmp_path / "tracker.xlsx"
+    _legacy_tracker(tracker)
+
+    applications = read_applications(tracker)
+
+    assert [application.company_name for application in applications] == ["Acme GmbH"]

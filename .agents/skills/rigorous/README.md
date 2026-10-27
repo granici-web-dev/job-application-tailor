@@ -1,7 +1,7 @@
 # rigorous
 
 > The engineering counterpart of [`impeccable`](https://github.com/anthropics/skills/tree/main/skill-creator).
-> One skill, 13 commands, 3 standards files.
+> One skill, 14 commands, 3 standards files.
 
 Disciplined code, low-ceremony, opinionated. Setup writes your team's engineering posture once (`PRINCIPLES.md`, `STACK.md`, `TESTING.md`). Every sub-command after that reads them so output never drifts from your team's standards.
 
@@ -20,6 +20,8 @@ Inside Claude Code or any harness that supports skills:
 ```text
 /rigorous                       Show the command menu
 /rigorous teach                 Set up PRINCIPLES.md / STACK.md / TESTING.md
+/rigorous document              Reverse-engineer the standards files from existing code
+/rigorous from-trd <spec>       Turn a binding spec (TRD / SoW) into the team's engineering canon
 /rigorous shape <feature>       Plan a feature before writing any code
 /rigorous craft <feature>       Implement after the shape is approved
 /rigorous tdd <feature>         Strict red-green-refactor cycle
@@ -47,7 +49,7 @@ Every sub-command reads these on every run via `scripts/load-context.mjs`. If `P
 
 ## Engineering laws (always apply)
 
-Six rules every command honors regardless of what's in your standards files:
+The core laws every command honors regardless of what's in your standards files (full set in SKILL.md):
 
 1. **Match the change to the task.** A bug fix changes the buggy line and nothing else.
 2. **Trust internal code, validate boundaries.** No defensive null checks where the type system already validated.
@@ -64,10 +66,12 @@ Six rules every command honors regardless of what's in your standards files:
 
 | | rigorous | other code skills |
 |---|---|---|
-| Install | one package, 13 commands | several packages across orgs |
+| Install | one package, 14 commands | several packages across orgs |
 | Standards | three durable files | global system prompts only |
 | Gates | shape required for craft / tdd | optional or absent |
 | Engineering laws | baked into every command | depends on which skill you invoke |
+| Review isolation | clean-context subagents, dual-axis (Standards vs Spec) | inline self-review or single-axis |
+| Test discipline | seam-confirmed, behavior-only TDD | test-first without an agreed contract surface |
 
 Honest take: [`obra/superpowers`](https://github.com/obra/superpowers) and [`mattpocock/skills`](https://github.com/mattpocock/skills) have excellent individual skills. Use them too. `rigorous` is for teams that want one cohesive frame over fourteen separate packages.
 

@@ -1,0 +1,18 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: Job Application Tailor
+      - navigation [ref=e7]:
+        - link "Сгенерировать" [ref=e8] [cursor=pointer]:
+          - /url: /generate
+        - link "Заявки" [ref=e9] [cursor=pointer]:
+          - /url: /applications
+  - main [ref=e10]:
+    - generic [ref=e11]:
+      - heading "Сгенерировать заявку" [level=1] [ref=e12]
+      - paragraph [ref=e13]: Вставьте ссылку на вакансию. CV и сопроводительное письмо адаптируются под неё на её языке, из вашего мастер-CV.
+    - generic [ref=e14]:
+      - textbox "Ссылка на вакансию" [ref=e16]:
+        - /placeholder: https://example.com/jobs/12345
+      - button "Сгенерировать" [disabled] [ref=e17]
+    - button "Сайт не открывается? Вставить описание вручную" [ref=e18] [cursor=pointer]

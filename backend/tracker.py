@@ -20,6 +20,13 @@ HIDDEN_HEADER = "Скрыто"
 CV_FILE_HEADER = "Файл CV"
 COVER_LETTER_FILE_HEADER = "Файл письма"
 LOCATION_HEADER = "Локация"
+DISCIPLINE_HEADER = "Дорожка"
+RULES_VERSION_HEADER = "Версия правил"
+
+# Bumped whenever emphasis.py or the section-order pass changes what a document looks like.
+# Without it a cohort of applications cannot be split into before and after a change, and the
+# only signal this project has — whether employers answer — stays unreadable.
+RULES_VERSION = "v1"
 HEADERS = [
     "Название фирмы",
     "Сколько работников",
@@ -32,6 +39,8 @@ HEADERS = [
     CV_FILE_HEADER,
     COVER_LETTER_FILE_HEADER,
     LOCATION_HEADER,
+    DISCIPLINE_HEADER,
+    RULES_VERSION_HEADER,
 ]
 STATUS_COLUMN_INDEX = HEADERS.index(STATUS_HEADER) + 1
 STATUS_COLUMN = get_column_letter(STATUS_COLUMN_INDEX)
@@ -45,7 +54,7 @@ STATUS_NOT_SENT = "НЕ ОТПРАВЛЕНО"
 STATUS_RANGE = f"{STATUS_COLUMN}2:{STATUS_COLUMN}1000"
 ALLOWED_STATUSES = frozenset({STATUS_SENT, STATUS_NOT_SENT})
 EMPLOYEE_COUNT_UNKNOWN = "н/д"
-COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14, "H": 10, "I": 44, "J": 44, "K": 28}
+COLUMN_WIDTHS = {"A": 28, "B": 18, "C": 42, "D": 16, "E": 32, "F": 18, "G": 14, "H": 10, "I": 44, "J": 44, "K": 28, "L": 14, "M": 14}
 DATA_START_ROW = 2
 
 
@@ -91,6 +100,8 @@ def append_application(
             cv_file,
             cover_letter_file,
             location,
+            analysis.discipline,
+            RULES_VERSION,
         ]
     )
     appended_row = sheet.max_row

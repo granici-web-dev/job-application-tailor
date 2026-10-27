@@ -11,6 +11,26 @@ This is not "polite feedback". It's honest, specific, and unsentimental.
 - On your own code from a few weeks ago.
 - When something feels off but you can't articulate why.
 
+## Isolation — the reviewer must not share the author's head
+
+A reviewer who watched the code get written inherits the author's blind spots: every decision already sounds justified because the justification is in context. Whenever the harness provides a subagent tool (Agent/Task) **and** the review target is non-trivial — for a change: > ~50 diff lines or > 2 changed files; for standing code (no diff): > ~200 lines or > 2 files in the target — dispatch the critique to subagents with a **clean context package**:
+
+- the diff (or file list + SHAs) — the code as it IS, not the story of how it got there
+- the approved shape plan / issue text, when one exists
+- the three posture docs (PRINCIPLES.md / STACK.md / TESTING.md)
+- explicitly NOT: the session history, the author's reasoning, or any "this is fine because we discussed it" carry-over
+
+Run **two axes in parallel**, each as its own subagent with its own lens:
+
+| Axis | Question | Reads |
+|---|---|---|
+| **Standards** | Does this code obey the house law? | Posture docs + the engineering laws + the anti-pattern hunt below |
+| **Spec** | Does this change do what was asked — nothing missing, nothing extra? | The shape plan / issue vs the diff |
+
+Merge the two findings lists; on conflict, the stricter finding wins. Same output format either way.
+
+State the mode at the top of the review: `CRITIQUE_MODE: isolated` or `CRITIQUE_MODE: inline (reason)`. Inline is legitimate for trivial diffs, or when no subagent tool exists — the process below still applies verbatim; what's lost is only the independence, so say so.
+
 ## Process
 
 ### 1. Read everything once, no notes

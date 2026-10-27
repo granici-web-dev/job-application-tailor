@@ -10,6 +10,22 @@ Technical audit. Surface concrete defects, not stylistic preferences. Different 
 - On a dependency upgrade.
 - On regression that defies easy reproduction.
 
+## Tool sweep — run the analyzers before opining
+
+Machines find what eyeballs skim past. Before the manual categories below, discover what's available in the repo/environment and run it:
+
+| Tool | When | Finds |
+|---|---|---|
+| `npm audit` / `pip-audit` / `cargo audit` / `osv-scanner` | matching lockfile exists | dependency CVEs |
+| `gitleaks detect` (or `git log -p \| grep`-based fallback) | always worth trying | committed secrets |
+| `semgrep` | installed, or repo has `.semgrep.yml` | injection patterns, unsafe APIs |
+| `trivy fs` | lockfiles / vendored deps | dependency CVEs in the filesystem |
+| `trivy image <ref>` / `trivy config` | a built/pullable image exists / Dockerfiles in repo | base-image CVEs / Dockerfile misconfigurations |
+| repo's own lint security plugins (`eslint-plugin-security`, `bandit`, `gosec`) | configured in the repo | language-specific footguns |
+| `EXPLAIN ANALYZE` | hot queries identified | missing indexes, seq scans |
+
+Rules of the sweep: run what's already installed or trivially runnable; **ask before installing** anything heavyweight; consume the outputs as findings input (dedupe against your manual findings, keep the tool's evidence); explicitly note which tools were NOT available so the user knows what the audit didn't cover. Tool output is a starting point, not the audit — the categories below cover what no scanner sees: authz logic, race conditions, cache misuse, idempotency.
+
 ## The categories
 
 ### 1. Performance
@@ -35,7 +51,7 @@ Walk through OWASP top 10 in the project's context:
 - **Sensitive data.** PII / credentials in logs, URLs, or error messages? `.env` committed accidentally? Secrets in client-side code?
 - **XSS.** User input rendered into HTML without escaping? Frameworks usually handle this — verify the unsafe-inner-html escape hatches aren't used.
 - **Authorization.** Are routes that should be admin-only actually checking? Is row-level access enforced (user X can only see user X's data)?
-- **Dependency CVEs.** `npm audit` / `pip audit` / `cargo audit` clean? Address criticals.
+- **Dependency CVEs.** `npm audit` / `pip-audit` / `cargo audit` clean? Address criticals.
 - **Open redirects, SSRF.** Anywhere we follow a user-supplied URL?
 - **Rate limiting.** Public endpoints — is there a ceiling? Login endpoint especially.
 

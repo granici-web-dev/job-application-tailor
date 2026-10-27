@@ -121,6 +121,16 @@ Rework until it reads like a deliberate human authored it.
 
 Plus two management commands: `pin <command>` and `unpin <command>`.
 
+### Independent judgment — subagents where they earn their keep
+
+Judgment formed inside the author's context isn't independent. When the harness provides a subagent tool, three commands use isolated subagents, each with its own trigger (stated in its reference file):
+
+- **`critique`** dispatches the review itself to a two-axis panel (Standards vs Spec) with a **clean context package** (diff/SHAs, shape plan, posture docs — never the session history), for non-trivial targets.
+- **`shape`** runs parallel competing candidate designs — only for genuinely contested designs.
+- **`architect`** runs its five-question review inline; it spawns two competing target designs only when its verdict is "restructure".
+
+`audit` does not dispatch subagents — its independence comes from the tool sweep (run the analyzers before opining). Inline execution remains legitimate everywhere the subagent tool is absent or the target is trivial — just labeled as such. Never spawn subagents for trivial targets; that's ceremony.
+
 ### Routing rules
 
 1. **No argument**: render the table above as the user-facing command menu, grouped by category. Ask what they'd like to do.
