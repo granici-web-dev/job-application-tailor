@@ -1,10 +1,4 @@
-from backend.page_limit import (
-    collapse_early_roles,
-    drop_irrelevant_skill_group,
-    drop_second_project,
-    fit_to_page_limit,
-    trim_older_roles,
-)
+from backend.page_limit import drop_irrelevant_skill_group, fit_to_page_limit
 from backend.render_pdf import (
     CV_CSS,
     DEFAULT_CV_LAYOUT,
@@ -58,48 +52,6 @@ _09/2009 – 09/2013_
 """
 
 
-def test_roles_started_before_2015_collapse_to_one_line_each():
-    collapsed, names = collapse_early_roles(CV)
-
-    assert names == ["Webdesigner — StarSoft SRL, Chisinau", "Grafikdesigner — NEFELE SRL, Chisinau"]
-    assert "### Webdesigner — StarSoft SRL, Chisinau (06/2014 – 04/2016)" in collapsed
-    assert "### Grafikdesigner — NEFELE SRL, Chisinau (09/2013 – 06/2014)" in collapsed
-    assert "UI/UX für Web-Anwendungen" not in collapsed
-    assert "Designkonzepte und Printmedien" not in collapsed
-
-
-def test_collapsing_leaves_later_roles_and_other_sections_alone():
-    collapsed, _ = collapse_early_roles(CV)
-
-    assert "- Shopify-Shops für Creator\n- Responsive Layouts\n- Landingpages" in collapsed
-    # Education is older than 2015 too, but it is not a role.
-    assert "_09/2009 – 09/2013_\n\n- Abschluss\n- Zweiter Punkt\n- Dritter Punkt" in collapsed
-    assert collapsed.endswith("- Dritter Punkt\n")
-
-
-def test_collapsing_twice_changes_nothing_the_second_time():
-    collapsed, _ = collapse_early_roles(CV)
-
-    assert collapse_early_roles(collapsed) == (collapsed, [])
-
-
-def test_roles_started_before_2020_keep_their_first_two_bullets():
-    trimmed, names = trim_older_roles(collapse_early_roles(CV)[0])
-
-    assert names == ["UI/UX Designer — Shirtee GmbH, Köln"]
-    assert "_05/2019 – 03/2020_\n\n- Shopify-Shops für Creator\n- Responsive Layouts\n" in trimmed
-    assert "Landingpages" not in trimmed
-    # dilotec started in 2020 and keeps all three.
-    assert "- Design-Spezifikationen" in trimmed
-    assert "- Dritter Punkt" in trimmed
-
-
-def test_a_role_already_within_two_bullets_is_not_reported_as_trimmed():
-    within = CV.replace("- Landingpages\n", "")
-
-    assert trim_older_roles(within) == (within, [])
-
-
 def test_the_page_count_comes_from_the_rendered_pdf():
     long_cv = "# Name\n\n## Berufserfahrung\n\n" + "\n".join(f"- Punkt {n}" for n in range(200))
 
@@ -110,13 +62,12 @@ def test_the_page_count_comes_from_the_rendered_pdf():
     assert render_markdown_with_page_count("# Name", css=CV_CSS)[1] == 1
 
 
-def _render_needing(*, compact=False, margin=None, font=None, content_cut=False):
+def _render_needing(*, compact=False, margin=None, font=None):
     """A fake renderer: 3 pages until every named condition holds, then 2."""
 
     def render(markdown, layout):
         fits = (
-            (not content_cut or "Landingpages" not in markdown)
-            and (not compact or layout.compact_spacing)
+            (not compact or layout.compact_spacing)
             and (margin is None or layout.margin_vertical_mm <= margin)
             and (font is None or layout.font_pt <= font)
         )
@@ -136,15 +87,15 @@ def test_a_cv_that_fits_is_rendered_once_with_the_default_layout():
     assert len(render.calls) == 1
 
 
-def test_the_layout_tightens_only_after_the_content_steps():
+def test_the_layout_tightens_and_the_content_stays():
     render = _render_needing(compact=True)
 
     fitted = fit_to_page_limit(CV, render)
 
     assert fitted.pages == 2
     assert fitted.layout == CvLayout(compact_spacing=True)
-    assert "Landingpages" not in fitted.markdown  # both content steps ran first
-    assert render.calls[-1] == CvLayout(compact_spacing=True)
+    assert fitted.markdown == CV
+    assert render.calls == [DEFAULT_CV_LAYOUT, CvLayout(compact_spacing=True)]
 
 
 def test_margins_go_to_15_mm_only_when_tighter_spacing_was_not_enough():
@@ -253,7 +204,7 @@ def test_four_groups_always_stay():
     assert len(_labels(cv)) == 4
 
 
-def test_skill_groups_go_after_the_role_steps_and_before_the_layout():
+def test_skill_groups_go_before_the_layout():
     def render(markdown, layout):
         render.calls.append(layout)
         return b"%PDF", 2 if len(_labels(markdown)) <= 4 else 3
@@ -276,7 +227,50 @@ def test_without_posting_terms_the_groups_still_go_down_to_four_before_the_layou
     assert fitted.layout == CvLayout(compact_spacing=True)
 
 
-PROJECTS_CV = """# Serghei Granici
+FULL_CV = """# Serghei Granici
+
+## Berufserfahrung
+
+### AI-native Product Designer & Full-stack Developer — CorLab (Praktikum)
+
+_05/2026 – heute_
+
+Eigenverantwortliche Leitung von Projekten.
+
+**Verwaltungssystem:**
+
+- 112 Use Cases
+- Prototypen für 6 Rollen
+
+### Senior UI/UX Designer — dilotec GmbH, Köln
+
+_03/2020 – 07/2025_
+
+- Aufbau von Designsystemen
+- Usability-Reviews
+- Design-Spezifikationen
+
+### UI/UX Designer — Shirtee GmbH, Köln
+
+_05/2019 – 03/2020_
+
+- Shopify-Shops für Creator
+- Responsive Layouts
+- Landingpages
+
+### Webdesigner — StarSoft SRL, Chisinau
+
+_06/2014 – 04/2016_
+
+- UI/UX für Web-Anwendungen
+- Branding und Design-Guidelines
+
+### Grafikdesigner — NEFELE SRL, Chisinau
+
+_09/2013 – 06/2014_
+
+- Designkonzepte und Printmedien
+- Kundenkommunikation
 
 ## Projekte
 
@@ -294,48 +288,34 @@ _09/2026 – heute_
 
 **Tech-Stack:** Python
 
----
-
 ## Kenntnisse
 
 **Frontend:** React
+
+**Backend & Daten:** Node.js
+
+**UI/UX Design:** Wireframing
+
+**AI & Tools:** Claude Code
+
+**Qualität:** WCAG
+
+**Methoden:** Agile
 """
 
 
-def test_the_second_project_goes_and_the_first_stays():
-    shorter, dropped = drop_second_project(PROJECTS_CV)
-
-    assert dropped == ["CRM-Digest-Bot für ein Möbelunternehmen (Rumänien)"]
-    assert shorter == (
-        "# Serghei Granici\n\n## Projekte\n\n### Website für eine Arztpraxis (Moldau)\n\n"
-        "_2026 – heute_\n\n- Website in drei Sprachen\n\n---\n\n## Kenntnisse\n\n**Frontend:** React\n"
-    )
+def _section(cv, heading):
+    return cv.split(heading, 1)[1].split("\n## ", 1)[0]
 
 
-def test_a_single_project_is_never_dropped():
-    shorter, _ = drop_second_project(PROJECTS_CV)
+def test_every_role_with_every_bullet_and_every_project_stays_after_all_steps():
+    render = _render_needing(font=9)  # never fits: every step runs
 
-    assert drop_second_project(shorter) == (shorter, [])
+    fitted = fit_to_page_limit(FULL_CV, render, ["React"])
 
-
-def test_the_second_project_goes_after_the_skill_groups_and_before_the_layout():
-    def render(markdown, layout):
-        render.calls.append(markdown)
-        return b"%PDF", 3 if "CRM-Digest-Bot" in markdown else 2
-
-    render.calls = []
-    cv = PROJECTS_CV.replace("**Frontend:** React\n", "".join(f"**G{n}:** Agile\n\n" for n in range(6)))
-
-    fitted = fit_to_page_limit(cv, render, ["react"])
-
-    assert fitted.pages == 2
-    assert fitted.layout == DEFAULT_CV_LAYOUT
-    assert fitted.markdown.count("**G") == 4  # the skill groups went first, down to four
-    assert all("CRM-Digest-Bot" in markdown for markdown in render.calls[:-1])
-
-
-def test_the_second_project_stays_when_the_cv_already_fits():
-    fitted = fit_to_page_limit(PROJECTS_CV, lambda markdown, layout: (b"%PDF", 2))
-
-    assert "CRM-Digest-Bot" in fitted.markdown
-
+    assert fitted.pages == 3
+    assert fitted.layout == CvLayout(compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15, font_pt=10)
+    assert _section(fitted.markdown, "## Berufserfahrung") == _section(FULL_CV, "## Berufserfahrung")
+    assert fitted.markdown.count("\n### ") == 7  # five roles, two projects
+    assert _section(fitted.markdown, "## Projekte") == _section(FULL_CV, "## Projekte")
+    assert len(_labels(_section(fitted.markdown, "## Kenntnisse"))) == 4  # only the skill groups went

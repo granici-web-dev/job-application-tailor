@@ -24,7 +24,7 @@ ATS formatting rules:
 
 Length rules (hard limits):
 - The CV must fit on at most 2 A4 pages once rendered to PDF. Treat this as a limit, not a target.
-- If the content does not fit, cut in this order: first drop bullets from roles that started before 2015, then drop skill groups that are irrelevant to this posting. Cutting means leaving whole bullets or whole groups out, never inventing a shorter version of them.
+- Never cut experience or projects to fit: every position keeps every bullet the master CV gives it, and every project given to you stays. The only content that may go is a skill group irrelevant to this posting, left out whole. The layout is tightened afterwards in code.
 
 Content rules:
 - Copy the master CV's Profil section as it stands. It is replaced with the master CV's own paragraph afterwards, so any change you make there is discarded.

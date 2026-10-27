@@ -287,7 +287,7 @@ def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_p
     assert not (tmp_path / "out").exists()
 
 
-def test_a_cv_over_two_pages_collapses_the_early_roles_without_asking_the_model(tmp_path):
+def test_a_cv_over_two_pages_keeps_every_role_and_goes_out_anyway(tmp_path):
     master = SHORT_MASTER + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 150)
     client = _client_returning(master, master, LETTER_JSON)
 
@@ -295,29 +295,10 @@ def test_a_cv_over_two_pages_collapses_the_early_roles_without_asking_the_model(
 
     assert client.messages.create.call_count == 4
     draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert "### Junior Developer — Oldtech AG, Riga (2010 – 2014)" in draft
-    assert "Altsystem" not in draft
+    assert "### Junior Developer — Oldtech AG, Riga\n" in draft
+    assert "- Wartung von Altsystem Nummer 150\n" in draft
     assert "- Built REST services in Python with FastAPI" in draft
-    assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) <= 2
-
-
-def test_a_cv_still_too_long_trims_the_roles_before_2020_to_two_bullets(tmp_path):
-    master = (
-        SHORT_MASTER
-        + _long_role("Developer — Midtech AG, Riga", "2017 – 2020", 150)
-        + _long_role("Junior Developer — Oldtech AG, Riga", "2010 – 2014", 3)
-    )
-    client = _client_returning(master, master, LETTER_JSON)
-
-    result = _run(tmp_path, _profile_dir_with_master(tmp_path, master), client)
-
-    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
-    assert "### Junior Developer — Oldtech AG, Riga (2010 – 2014)" in draft
-    assert "- Wartung von Altsystem Nummer 2\n" in draft
-    assert "Nummer 3\n" not in draft
-    assert "- Built REST services in Python with FastAPI" in draft
-    assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) <= 2
-
+    assert len(pypdf.PdfReader(io.BytesIO(result.cv_pdf_path.read_bytes())).pages) > 2
 
 
 def _letter_with_corlab_sentence(sentence):
