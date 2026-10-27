@@ -35,6 +35,10 @@ PROJECT_ENTRY = re.compile(r"^###\s+\S")
 PROJECT_TAGS = re.compile(r"^\s*_Tags:\s*([^_]*)_\s*$", re.IGNORECASE)
 # The sentence the cover letter tells the project in: `_Letter: Daneben habe ich …_`.
 PROJECT_LETTER = re.compile(r"^\s*_Letter:\s*(.*?)_\s*$", re.IGNORECASE)
+# An entry under the experience or project section, and the lines its introduction stops at.
+ENTRY_HEADING = re.compile(r"^###\s+(.*?)\s*$")
+ITALIC_LINE = re.compile(r"^\s*_[^_].*_\s*$")
+INTRO_STOP = re.compile(r"^\s*([-*+]\s|\*\*|#|---)")
 # A variant of the summary in the master CV: `### Profil (design)` under `## Profil`.
 SUMMARY_VARIANT = re.compile(r"^###\s+.*\((\w+)\)\s*$")
 # Which summary variant each discipline gets; an unclassified posting gets the engineering one.
@@ -374,6 +378,102 @@ def put_back_master_summary(
     first = next((i for i, line in enumerate(lines) if SECTION_HEADING.match(line)), len(lines))
     rebuilt = "\n".join(lines[:first] + block + lines[first:])
     return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def with_master_entry_intros(cv_markdown: str, master_markdown: str) -> str:
+    """Each entry's introduction replaced by the master CV's, word for word.
+
+    The introduction is the paragraph without bullets between an entry's dates and its first
+    bullet or bold subheading — CorLab's opening line, each project's. Like the summary, it is
+    the candidate's own wording, so whatever the model or humanize made of it is overwritten
+    here; an entry the master gives none loses any the model wrote. An entry whose heading is
+    not the master's is left alone, and entry_intro_findings reports it.
+    """
+    master = _entry_intros(master_markdown)
+    lines = cv_markdown.splitlines()
+    for heading, (start, end), _ in reversed(_entry_spans(cv_markdown)):
+        if _entry_key(heading) not in master:
+            continue
+        body = lines[start:end]
+        first, last = _intro_span(body)
+        intro = master[_entry_key(heading)]
+        if first == last:
+            replacement = ["", *intro] if intro else []
+        else:
+            replacement = intro
+            if not intro:
+                # Its blank line goes too, so no gap is left behind.
+                last += 1 if last < len(body) and not body[last].strip() else 0
+        lines[start:end] = body[:first] + replacement + body[last:]
+    rebuilt = "\n".join(lines)
+    return rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt
+
+
+def entry_intro_findings(cv_markdown: str, master_markdown: str) -> list[str]:
+    """Where an entry's introduction is not the master CV's, as instructions for the next attempt."""
+    master = _entry_intros(master_markdown)
+    findings = []
+    for heading, _, intro in _entry_spans(cv_markdown):
+        key = _entry_key(heading)
+        if key not in master:
+            findings.append(
+                f"The entry '{heading}' is not headed as in the master CV. Keep each experience "
+                "and project heading exactly as the master CV writes it."
+            )
+        elif intro != master[key]:
+            expected = " ".join(line.strip() for line in master[key] if line.strip()) or "none"
+            findings.append(f"The introduction of '{heading}' must be the master CV's, word for word: {expected}")
+    return findings
+
+
+def _entry_intros(markdown: str) -> dict[str, list[str]]:
+    return {_entry_key(heading): intro for heading, _, intro in _entry_spans(markdown)}
+
+
+def _entry_spans(markdown: str) -> list[tuple[str, tuple[int, int], list[str]]]:
+    """Each experience and project entry: its heading, its body's line range, its introduction."""
+    lines = markdown.splitlines()
+    spans = []
+    for head, (start, end) in _level_two_sections(markdown):
+        if not (EXPERIENCE_HEADING.match(head) or PROJECTS_HEADING.match(head)):
+            continue
+        entries = [index for index in range(start + 1, end) if ENTRY_HEADING.match(lines[index])]
+        for position, entry in enumerate(entries):
+            stop = entries[position + 1] if position + 1 < len(entries) else end
+            body = lines[entry + 1 : stop]
+            first, last = _intro_span(body)
+            intro = [line.rstrip() for line in body[first:last]]
+            spans.append((ENTRY_HEADING.match(lines[entry]).group(1), (entry + 1, stop), intro))
+    return spans
+
+
+def _intro_span(body: list[str]) -> tuple[int, int]:
+    """Where the introduction sits in an entry's body; empty, after the dates, when it has none."""
+    first = last = None
+    after_dates = 0
+    for index, line in enumerate(body):
+        if not line.strip():
+            continue
+        if INTRO_STOP.match(line):
+            break
+        if ITALIC_LINE.match(line) and first is None:
+            after_dates = index + 1
+            continue
+        if first is None:
+            first = index
+        last = index + 1
+    if first is None:
+        return after_dates, after_dates
+    return first, last
+
+
+def _entry_key(heading: str) -> str:
+    """A heading compared without case, spacing, the kind of dash, or dates put after it.
+
+    "Webdesigner — StarSoft SRL, Chisinau (06/2014 – 04/2016)" is a role cut to one line.
+    """
+    heading = re.sub(r"\s*\([^)]*\d{4}[^)]*\)\s*$", "", heading)
+    return re.sub(r"\s+", " ", re.sub(r"[–—-]", "-", heading)).strip().casefold()
 
 
 def _level_two_sections(cv_markdown: str) -> list[tuple[str, tuple[int, int]]]:

@@ -29,12 +29,14 @@ from backend.page_limit import fit_to_page_limit
 from backend.render_pdf import CvLayout, cv_css, render_markdown_to_pdf, render_markdown_with_page_count
 from backend.tailor_cv import (
     apply_position_headline,
+    entry_intro_findings,
     move_skills_after_experience,
     put_back_master_summary,
     split_off_summary,
     summary_variant,
     project_letter_sentence,
     tailor_cv,
+    with_master_entry_intros,
     with_relevant_projects,
     with_summary_variant,
 )
@@ -132,6 +134,8 @@ def run_pipeline(
         cv, summary = split_off_summary(cv)
         cv = humanize(cv, kind="cv", client=client, model=model)
         cv = put_back_master_summary(cv, summary, cv_profile.master_cv_markdown)
+        # Same for each entry's introduction: the master's own paragraph, whatever humanize did.
+        cv = with_master_entry_intros(cv, cv_profile.master_cv_markdown)
         if headline_findings(headline, job_title=analysis.job_title, language=cv_language(cv)):
             headline_misses += 1
             # One retry for the headline; after that the discipline's default stands in for it
@@ -160,7 +164,8 @@ def run_pipeline(
         )
         groups = [] if group_misses > 1 else skill_group_findings(cv, cv_profile.master_cv_markdown)
         # The application line is held to the analysis' title alone, not to the master CV.
-        return headline + groups + application_line_findings(cv, analysis.job_title) + check_cv(
+        intros = entry_intro_findings(cv, cv_profile.master_cv_markdown)
+        return headline + groups + intros + application_line_findings(cv, analysis.job_title) + check_cv(
             without_application_line(cv),
             cv_profile.master_cv_markdown,
             posting_terms=posting_terms,
