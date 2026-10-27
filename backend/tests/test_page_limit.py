@@ -1,4 +1,9 @@
-from backend.page_limit import collapse_early_roles, fit_to_page_limit, trim_older_roles
+from backend.page_limit import (
+    collapse_early_roles,
+    drop_irrelevant_skill_group,
+    fit_to_page_limit,
+    trim_older_roles,
+)
 from backend.render_pdf import (
     CV_CSS,
     DEFAULT_CV_LAYOUT,
@@ -181,3 +186,91 @@ def test_tighter_spacing_and_margins_really_shorten_the_rendered_cv():
 
     # Ten such sections run onto a third page as set by default and fit two when tightened.
     assert (normal, tight) == (3, 2)
+
+
+SKILLS_CV = """# Serghei Granici
+
+## Berufserfahrung
+
+### Frontend Developer — CorLab
+
+_05/2026 – heute_
+
+- Arbeit
+
+## Kenntnisse
+
+**Frontend:** HTML, React, TypeScript
+
+**Backend & Daten:** Node.js, REST API, PostgreSQL
+
+**UI/UX Design:** Wireframing, Prototyping
+
+**AI & Tools:** Claude Code, Figma
+
+**Qualität:** Accessibility (WCAG 2.2 AA)
+
+**Methoden:** Agile, Kanban
+
+## Sprachen
+
+- Deutsch
+"""
+TERMS = ["react", "REST APIs", "WCAG"]
+
+
+def _labels(cv):
+    return [line.split(":**")[0].strip("*") for line in cv.splitlines() if line.startswith("**")]
+
+
+def test_the_last_group_naming_no_posting_term_goes_first():
+    shorter, dropped = drop_irrelevant_skill_group(SKILLS_CV, TERMS)
+
+    assert dropped == ["Methoden"]
+    assert _labels(shorter) == ["Frontend", "Backend & Daten", "UI/UX Design", "AI & Tools", "Qualität"]
+    assert "**Qualität:** Accessibility (WCAG 2.2 AA)\n\n## Sprachen" in shorter
+
+
+def test_matching_ignores_case_and_runs_both_ways():
+    """'react' finds React; the group's 'REST API' answers the posting's 'REST APIs'."""
+    backend_last = SKILLS_CV.replace("**Backend & Daten:** Node.js, REST API, PostgreSQL\n\n", "").replace(
+        "**Methoden:** Agile, Kanban", "**Methoden:** Agile, Kanban\n\n**Backend & Daten:** Node.js, REST API, PostgreSQL"
+    )
+
+    _, dropped = drop_irrelevant_skill_group(backend_last, ["REST APIs"])
+    _, dropped_by_case = drop_irrelevant_skill_group(backend_last.replace("REST API", "Python"), ["python"])
+
+    assert dropped == ["Methoden"]
+    assert dropped_by_case == ["Methoden"]
+
+
+def test_four_groups_always_stay():
+    cv, dropped = SKILLS_CV, ["start"]
+    while dropped:
+        cv, dropped = drop_irrelevant_skill_group(cv, [])
+
+    assert len(_labels(cv)) == 4
+
+
+def test_skill_groups_go_after_the_role_steps_and_before_the_layout():
+    def render(markdown, layout):
+        render.calls.append(layout)
+        return b"%PDF", 2 if len(_labels(markdown)) <= 4 else 3
+
+    render.calls = []
+
+    fitted = fit_to_page_limit(SKILLS_CV, render, TERMS)
+
+    assert fitted.pages == 2
+    assert _labels(fitted.markdown) == ["Frontend", "Backend & Daten", "UI/UX Design", "Qualität"]
+    assert fitted.layout == DEFAULT_CV_LAYOUT  # the layout was never touched
+
+
+def test_without_posting_terms_the_groups_still_go_down_to_four_before_the_layout():
+    render = _render_needing(compact=True)
+
+    fitted = fit_to_page_limit(SKILLS_CV, render)
+
+    assert len(_labels(fitted.markdown)) == 4
+    assert fitted.layout == CvLayout(compact_spacing=True)
+

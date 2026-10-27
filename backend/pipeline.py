@@ -151,7 +151,9 @@ def run_pipeline(
             cv, css=cv_css(layout), photo=photo, include_photo=include_photo, line_breaks=True
         )
 
-    fitted = fit_to_page_limit(finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv)
+    fitted = fit_to_page_limit(
+        finish_cv(_fact_checked(draft_cv, check_cv_facts, kind="CV")), render_cv, posting_terms
+    )
     cv_markdown, cv_pdf = fitted.markdown, fitted.pdf
 
     # No humanize pass on the letter: all but the opening and one sentence are the candidate's

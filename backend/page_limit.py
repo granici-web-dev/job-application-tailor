@@ -3,16 +3,18 @@
 The limit is in the prompt, and the model reads it as advice: runs came out at three pages,
 and asking again with the page count in hand never brought one down. So the pipeline
 measures the rendered PDF and shortens here, in a fixed order: first the content, oldest
-roles first, then the layout, within floors that keep the page readable.
+roles first, then the skill groups the posting has no use for, then the layout, within floors
+that keep the page readable.
 """
 
 from __future__ import annotations
 
 import logging
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, replace
 
+from backend.grounding import GROUP_LINE, SKILL_HEADING, _items
 from backend.render_pdf import DEFAULT_CV_LAYOUT, CvLayout
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,8 @@ EARLY_ROLE_YEAR = 2015
 # Step two: roles that started before this year keep at most TRIMMED_BULLETS bullets.
 OLDER_ROLE_YEAR = 2020
 TRIMMED_BULLETS = 2
+# Step three: skill groups naming nothing the posting asks for go, down to this many groups.
+MIN_SKILL_GROUPS = 4
 
 SECTION = re.compile(r"^##\s+\S")
 ENTRY = re.compile(r"^###\s+(.*?)\s*$")
@@ -118,6 +122,52 @@ def _rewrite_roles(
     return (rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt), changed
 
 
+def drop_irrelevant_skill_group(cv_markdown: str, posting_terms: Sequence[str]) -> tuple[str, list[str]]:
+    """Take out the last skill group that names none of the posting's terms.
+
+    The last one first: the tailoring step has ordered the groups by relevance. Matching
+    ignores case and runs both ways, so "REST API" in a group answers a posting's "REST
+    APIs", and "React" answers "React". At MIN_SKILL_GROUPS groups nothing more goes.
+    Returns the CV and the label it dropped, if any.
+    """
+    lines = cv_markdown.splitlines()
+    groups: list[tuple[int, str, str]] = []
+    inside = False
+    for index, line in enumerate(lines):
+        if line.startswith("#"):
+            inside = bool(SKILL_HEADING.match(line))
+            continue
+        match = GROUP_LINE.match(line) if inside else None
+        if match:
+            groups.append((index, match.group(1).strip(), match.group(2)))
+    if len(groups) <= MIN_SKILL_GROUPS:
+        return cv_markdown, []
+
+    for index, label, body in reversed(groups):
+        if _names_posting_term(body, posting_terms):
+            continue
+        # The blank line after a group goes with it, so no gap is left behind.
+        end = index + 1
+        if end < len(lines) and not lines[end].strip() and (index == 0 or not lines[index - 1].strip()):
+            end += 1
+        rebuilt = "\n".join(lines[:index] + lines[end:])
+        return (rebuilt + "\n" if cv_markdown.endswith("\n") else rebuilt), [label]
+    return cv_markdown, []
+
+
+def _names_posting_term(body: str, posting_terms: Sequence[str]) -> bool:
+    # Bound at the start only, so an ending ("APIs", "Designsystemen") still matches.
+    def within(needle: str, haystack: str) -> bool:
+        return re.search(rf"(?<!\w){re.escape(needle)}", haystack, re.IGNORECASE) is not None
+
+    items = _items(body)
+    return any(
+        within(term, body) or any(within(item, term) for item in items)
+        for term in posting_terms
+        if term.strip()
+    )
+
+
 Render = Callable[[str, CvLayout], tuple[bytes, int]]
 
 
@@ -147,13 +197,13 @@ _LAYOUT_STEPS = (
 )
 
 
-def fit_to_page_limit(cv_markdown: str, render: Render) -> FittedCv:
+def fit_to_page_limit(cv_markdown: str, render: Render, posting_terms: Sequence[str] = ()) -> FittedCv:
     """The CV shortened without the model until it fits MAX_CV_PAGES, or as far as allowed.
 
     Content first — only the oldest roles' bullets go, never a title or a date, so what is
-    left has already passed the fact check — then the layout, within its floors. A CV that
-    still does not fit goes out as it is, with a warning: a third page is better than a
-    stopped application.
+    left has already passed the fact check — then, one at a time, the skill groups that name
+    none of `posting_terms`, then the layout, within its floors. A CV that still does not
+    fit goes out as it is, with a warning: a third page is better than a stopped application.
     """
     layout = DEFAULT_CV_LAYOUT
     pdf, pages = render(cv_markdown, layout)
@@ -169,6 +219,14 @@ def fit_to_page_limit(cv_markdown: str, render: Render) -> FittedCv:
         logger.warning(
             "CV was %d pages; %s: %s -> %d pages", pages, description, "; ".join(changed), shorter_pages
         )
+        cv_markdown, pages = shorter, shorter_pages
+
+    while pages > MAX_CV_PAGES:
+        shorter, dropped = drop_irrelevant_skill_group(cv_markdown, posting_terms)
+        if not dropped:
+            break
+        pdf, shorter_pages = render(shorter, layout)
+        logger.warning("CV was %d pages; dropped skill group: %s -> %d pages", pages, dropped[0], shorter_pages)
         cv_markdown, pages = shorter, shorter_pages
 
     for description, adjust in _LAYOUT_STEPS:
