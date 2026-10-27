@@ -521,3 +521,12 @@ def test_a_sentence_about_no_one_system_goes_after_the_first_sentence():
 
 def test_without_an_added_sentence_there_is_nothing_to_place():
     assert _placement(CORLAB) == []
+
+
+def test_a_skill_listed_under_no_system_does_not_move_the_sentence_off_its_system():
+    """"Accessibility" is a skill only; the WCAG audit still places the sentence at the Verwaltungssystem."""
+    sentence = "Dabei habe ich einen Cognitive Walkthrough und einen Accessibility (WCAG 2.2 AA)-Audit durchgeführt."
+    after_first_system = CORLAB.replace("Verwaltungssystem. Ein", f"Verwaltungssystem. {sentence} Ein")
+
+    assert _placement(after_first_system) == []
+    assert "is about the system 'Verwaltungssystem" in _placement(CORLAB + " " + sentence)[0]

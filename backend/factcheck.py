@@ -307,8 +307,10 @@ def sentence_unit(sentence: str, context: str, master_markdown: str) -> str | No
     """The unit of the entry `context` names that `sentence` is about, or None.
 
     By name first ("Für eine Arztpraxis …" names the Arztpraxis system), else by its facts:
-    the one unit whose text holds every number and skill the sentence states. A sentence that
-    names or fits none, or fits several, is about the entry as a whole.
+    the one unit whose text holds every number and skill the sentence states. A skill no unit
+    holds ("Accessibility", listed under skills only) places the sentence nowhere, so it is left
+    out here; the fact check reports it on its own. A sentence that names or fits none, or fits
+    several, is about the entry as a whole.
     """
     master = _read_master(master_markdown)
     entry = next(iter(_mentioned(context, master.entries)), None)
@@ -319,7 +321,11 @@ def sentence_unit(sentence: str, context: str, master_markdown: str) -> str | No
         return named[0].name
     text = _with_digits(sentence)
     numbers = _numbers(text)
-    terms = [term for term in master.terms if _occurs(term, text)]
+    terms = [
+        term
+        for term in master.terms
+        if _occurs(term, text) and any(_occurs(term, unit.text) for unit in entry.units)
+    ]
     if not numbers and not terms:
         return None
     holders = [
