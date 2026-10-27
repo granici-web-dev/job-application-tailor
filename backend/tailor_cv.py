@@ -27,6 +27,7 @@ EXPERIENCE_HEADING = re.compile(
     r"^##\s*(berufserfahrung|beruflicher werdegang|werdegang|experience|employment)", re.IGNORECASE
 )
 EDUCATION_HEADING = re.compile(r"^##\s*(ausbildung|education)", re.IGNORECASE)
+LANGUAGES_HEADING = re.compile(r"^##\s*(sprachen|languages)\b", re.IGNORECASE)
 SUMMARY_HEADING = re.compile(r"^##\s*(profil|kurzprofil|summary|profile)\b", re.IGNORECASE)
 SEPARATOR = re.compile(r"^\s*(---+)?\s*$")
 PROJECTS_HEADING = re.compile(r"^##\s*(projekte|projects)\b", re.IGNORECASE)
@@ -589,6 +590,91 @@ def _entry_key(heading: str) -> str:
     """
     heading = re.sub(r"\s*\([^)]*\d{4}[^)]*\)\s*$", "", heading)
     return re.sub(r"\s+", " ", re.sub(r"[–—-]", "-", heading)).strip().casefold()
+
+
+def split_off_education(cv_markdown: str) -> tuple[str, list[str] | None, str | None]:
+    """The CV without its education section, that section's lines, and the heading after it.
+
+    Like the summary, the education is the master CV's word for word — every entry, every
+    bullet, in its order — so it never reaches humanize; put_back_master_education puts the
+    master's back where it was.
+    """
+    sections = _level_two_sections(cv_markdown)
+    index = next((i for i, (head, _) in enumerate(sections) if EDUCATION_HEADING.match(head)), None)
+    if index is None:
+        return cv_markdown, None, None
+    lines = cv_markdown.splitlines()
+    start, end = sections[index][1]
+    following = sections[index + 1][0] if index + 1 < len(sections) else None
+    rest = "\n".join(lines[:start] + lines[end:])
+    return (rest + "\n" if cv_markdown.endswith("\n") else rest), lines[start:end], following
+
+
+def put_back_master_education(
+    cv_markdown: str, removed: list[str] | None, following: str | None, master_markdown: str
+) -> str:
+    """The CV with the master CV's education section, word for word, where the CV had its own.
+
+    A CV that had none gets it before its languages section, or at the end. The heading and
+    the separator after it are the CV's, as for the summary.
+    """
+    body = _master_education_body(master_markdown)
+    if body is None:
+        return cv_markdown
+    lines = cv_markdown.splitlines()
+    heading = removed[0] if removed else _master_education_heading(master_markdown)
+    trailing: list[str] = []
+    if removed:
+        tail = removed[1:]
+        while tail and SEPARATOR.match(tail[-1]):
+            trailing.insert(0, tail.pop())
+        while trailing and not trailing[0].strip():
+            trailing.pop(0)
+    if following is None and not removed:
+        following = next((line for line in lines if LANGUAGES_HEADING.match(line)), None)
+    at = next((i for i, line in enumerate(lines) if following is not None and line == following), len(lines))
+    block = [heading, "", *body, "", *trailing]
+    if at == len(lines) and lines and lines[-1].strip():
+        block.insert(0, "")
+    rebuilt = "\n".join(lines[:at] + block + lines[at:])
+    return rebuilt + "\n" if cv_markdown.endswith("\n") or at == len(lines) else rebuilt
+
+
+def education_findings(cv_markdown: str, master_markdown: str) -> list[str]:
+    """Where the CV's education section is not the master CV's, word for word."""
+    expected = _master_education_body(master_markdown)
+    if expected is None:
+        return []
+    _, removed, _ = split_off_education(cv_markdown)
+    if removed is None:
+        return ["The CV has no education section; it carries the master CV's, word for word."]
+    if _trimmed(removed[1:]) != expected:
+        return ["The education section must be the master CV's, word for word: every entry and bullet, in its order."]
+    return []
+
+
+def _master_education_body(master_markdown: str) -> list[str] | None:
+    section = next(
+        (span for head, span in _level_two_sections(master_markdown) if EDUCATION_HEADING.match(head)), None
+    )
+    if section is None:
+        return None
+    start, end = section
+    return _trimmed(master_markdown.splitlines()[start + 1 : end])
+
+
+def _master_education_heading(master_markdown: str) -> str:
+    return next(head for head, _ in _level_two_sections(master_markdown) if EDUCATION_HEADING.match(head))
+
+
+def _trimmed(lines: list[str]) -> list[str]:
+    """Lines without the blank lines and separators around them."""
+    lines = [line.rstrip() for line in lines]
+    while lines and SEPARATOR.match(lines[0]):
+        lines.pop(0)
+    while lines and SEPARATOR.match(lines[-1]):
+        lines.pop()
+    return lines
 
 
 def _level_two_sections(cv_markdown: str) -> list[tuple[str, tuple[int, int]]]:

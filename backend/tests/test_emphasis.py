@@ -56,13 +56,13 @@ def test_emphasis_never_licenses_dropping_the_other_track():
             assert "Never restate a role's title" in instruction
 
 
-def test_design_posting_keeps_the_training_and_its_stack_to_a_mention():
+def test_design_posting_keeps_the_training_to_a_mention_in_the_letter_only():
     cv = emphasis_instruction("design", kind="cv")
     letter = emphasis_instruction("design", kind="cover_letter")
 
-    # The CV thins the enumeration, not the entry, and the skills list leads with design.
-    assert "named in passing" in cv
-    assert "The entry itself stays" in cv
+    # The CV's education is the master CV's word for word, so the CV leaves the training alone;
+    # its skills list leads with design.
+    assert "Weiterbildung" not in cv
     assert "put the master CV's design groups first" in cv
     # The letter gives the training a sentence and a handful of technologies, not a paragraph.
     assert "collapses into a single sentence" in letter

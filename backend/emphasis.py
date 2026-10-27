@@ -37,11 +37,6 @@ _CV_INSTRUCTIONS = {
         "and accessibility, analysis — then the implementation and AI groups, then methods. A "
         "stack taking up more of the page than the design work reads as a candidate applying for "
         "a different job.\n"
-        "- The Weiterbildung is named in passing — a completed qualification that puts the "
-        "candidate on both sides of the handover, design and implementation. The entry itself "
-        "stays; only its technology enumeration shrinks, to the technologies this posting "
-        "actually touches. This is the one list a design posting may shorten, and it overrides "
-        "the rule about keeping a training's named technologies intact.\n"
         "- Within a role, put the design bullets before the development ones. The roles themselves "
         "keep the order the master CV gives them — reverse-chronological order is not something "
         "relevance may reshuffle.\n" + _CV_RULES

@@ -36,9 +36,12 @@ from backend.render_pdf import (
 )
 from backend.tailor_cv import (
     apply_position_headline,
+    education_findings,
     entry_intro_findings,
     move_skills_after_experience,
+    put_back_master_education,
     put_back_master_summary,
+    split_off_education,
     split_off_summary,
     summary_variant,
     project_letter_sentence,
@@ -145,8 +148,11 @@ def run_pipeline(
         # The summary is the master CV's paragraph, untouched by humanize; the fact check
         # still reads it, since it runs on the whole CV.
         cv, summary = split_off_summary(cv)
+        # The education likewise: the master CV's section, word for word, never humanized.
+        cv, education, after_education = split_off_education(cv)
         cv = humanize(cv, kind="cv", client=client, model=model)
         cv = put_back_master_summary(cv, summary, cv_profile.master_cv_markdown)
+        cv = put_back_master_education(cv, education, after_education, cv_profile.master_cv_markdown)
         # Same for each entry's introduction: the master's own paragraph, whatever humanize did.
         cv = with_master_entry_intros(cv, cv_profile.master_cv_markdown)
         # And each entry's bullets: the master's set, in the model's order where it kept them.
@@ -179,7 +185,9 @@ def run_pipeline(
         )
         groups = [] if group_misses > 1 else skill_group_findings(cv, cv_profile.master_cv_markdown)
         # The application line is held to the analysis' title alone, not to the master CV.
-        intros = entry_intro_findings(cv, cv_profile.master_cv_markdown)
+        intros = entry_intro_findings(cv, cv_profile.master_cv_markdown) + education_findings(
+            cv, cv_profile.master_cv_markdown
+        )
         return headline + groups + intros + application_line_findings(cv, analysis.job_title) + check_cv(
             without_application_line(cv),
             cv_profile.master_cv_markdown,

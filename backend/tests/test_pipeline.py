@@ -532,3 +532,27 @@ def test_a_posting_with_its_own_position_gets_no_unsolicited_opening(tmp_path):
     _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
     assert "## Unsolicited application" not in _user_messages(client)[3]
+
+
+EDUCATION_MASTER = SHORT_MASTER + (
+    "\n## Education\n\n### Retraining — Code School, Berlin\n\n_2016 – 2019_\n\n"
+    "- Moved to Germany in 2016, language courses\n- First job in Germany in 2019\n\n"
+    "### BSc Computer Science — Tech University\n\n_2010 – 2014_\n"
+)
+
+
+@pytest.mark.parametrize("discipline", ["engineering", "design", "analysis", "ai", "unknown"])
+def test_the_education_is_the_masters_word_for_word_and_never_reaches_humanize(tmp_path, discipline):
+    without_retraining = EDUCATION_MASTER.split("### Retraining")[0] + "### BSc Computer Science — Tech University\n\n_2010 – 2014_\n"
+    analysis = json.dumps({**json.loads(ANALYSIS_JSON), "discipline": discipline})
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(analysis), _message(without_retraining), _message(without_retraining), _message(LETTER_JSON)
+    ]
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, EDUCATION_MASTER), client)
+
+    assert "## Education" not in _user_messages(client)[2]
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "### Retraining — Code School, Berlin\n\n_2016 – 2019_\n\n- Moved to Germany in 2016, language courses\n" in draft
+    assert draft.index("### Retraining") < draft.index("### BSc Computer Science")
