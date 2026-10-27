@@ -17,14 +17,15 @@ _SHARED_RULES = (
 # Putting a track first tempts the model to pad that track out. Reordering a list is not
 # permission to grow it, and the skills section is where that shows up.
 #
-# Both disciplines group that section; only the categories differ, so how a label is written
-# lives here. The bold form is not decoration — the grounding check strips exactly it before
+# Both disciplines keep the master CV's groups; only their order differs, so how a label is
+# written lives here. The bold form is not decoration — the grounding check strips exactly it before
 # reading the skills behind it, which is what keeps a category name from counting as a claim.
 _CV_RULES = _SHARED_RULES + (
     "\n- Reordering the skills is not licence to expand them. The section may only name terms the "
     "master CV names as skills; never coin a new skill label out of an experience bullet."
-    "\n- Write each category label in the posting's language and open its line with it in bold, as "
-    "`**Label:**`, with that group's skills following on the same line. Only label a group that "
+    "\n- Open each group's line with the master CV's own label in bold, word for word and in the "
+    "master CV's language, as `**Label:**`, with that group's skills following on the same line. "
+    "Never rename, merge or split a group. Only label a group that "
     "has skills to hold: an empty category is an invitation to fill it, and nothing in the skills "
     "section may be filled."
 )
@@ -32,14 +33,10 @@ _CV_RULES = _SHARED_RULES + (
 _CV_INSTRUCTIONS = {
     "design": (
         "This posting hires for design, so the CV has to read design-first.\n"
-        "- Group the skills section under category labels, in this order: UI/UX design, usability "
-        "and accessibility, design tools, frontend implementation, backend and infrastructure, "
-        "AI-assisted work, methods. The design categories come first and there are more of them "
-        "than the implementation ones.\n"
-        "- The whole stack folds into those two implementation categories instead of spreading "
-        "across the section: a stack taking up more of the page than the design work reads as a "
-        "candidate applying for a different job. Folding is not dropping — every skill still "
-        "appears, inside its category.\n"
+        "- In the skills section, put the master CV's design groups first — UI/UX design, usability "
+        "and accessibility, analysis — then the implementation and AI groups, then methods. A "
+        "stack taking up more of the page than the design work reads as a candidate applying for "
+        "a different job.\n"
         "- The Weiterbildung is named in passing — a completed qualification that puts the "
         "candidate on both sides of the handover, design and implementation. The entry itself "
         "stays; only its technology enumeration shrinks, to the technologies this posting "
@@ -53,7 +50,7 @@ _CV_INSTRUCTIONS = {
         "This posting hires for engineering, so the CV has to read development-first.\n"
         "- In the skills section, list the programming languages, frameworks and development tools "
         "first, then the AI tooling, then the design skills.\n"
-        "- Group that section under category labels, in this order: frontend, backend and APIs, "
+        "- Order the master CV's skill groups like this: frontend, backend and APIs, "
         "infrastructure and tools, AI-assisted development, design and UX, methods. A reader "
         "screening for a developer finds the stack by category, not by scanning a flat list.\n"
         "- Within a role, put the development and technical bullets before the design ones. The "

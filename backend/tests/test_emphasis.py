@@ -60,11 +60,10 @@ def test_design_posting_keeps_the_training_and_its_stack_to_a_mention():
     cv = emphasis_instruction("design", kind="cv")
     letter = emphasis_instruction("design", kind="cover_letter")
 
-    # The CV thins the enumeration, not the entry, and the skills list stays design-heavy.
+    # The CV thins the enumeration, not the entry, and the skills list leads with design.
     assert "named in passing" in cv
     assert "The entry itself stays" in cv
-    assert "more of them than the implementation ones" in cv
-    assert "Folding is not dropping" in cv
+    assert "put the master CV's design groups first" in cv
     # The letter gives the training a sentence and a handful of technologies, not a paragraph.
     assert "collapses into a single sentence" in letter
     assert "at most four technologies" in letter
@@ -139,3 +138,13 @@ def test_unclassified_posting_leaves_the_prompts_as_they_were():
 
 def test_an_ai_posting_gets_the_engineering_emphasis():
     assert emphasis_instruction("ai", kind="cv") == emphasis_instruction("engineering", kind="cv")
+
+
+def test_cv_emphasis_keeps_the_master_cv_group_labels():
+    for discipline in ("design", "engineering"):
+        instruction = emphasis_instruction(discipline, kind="cv")
+
+        assert "the master CV's own label in bold, word for word" in instruction
+        assert "Never rename, merge or split a group" in instruction
+        assert "posting's language" not in instruction
+

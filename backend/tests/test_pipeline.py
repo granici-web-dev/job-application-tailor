@@ -415,3 +415,20 @@ def test_the_cv_gets_only_the_projects_for_the_discipline_and_the_letter_gets_al
     assert "Report Bot" in letter_request and "Clinic Website" in letter_request
     assert "_Tags:" not in cv_request + letter_request
 
+
+
+GROUPED_MASTER = SHORT_MASTER.replace(
+    "## Skills\nPython, FastAPI", "## Skills\n- **Backend:** Python, FastAPI\n- **Tools:** Docker"
+)
+
+
+def test_skill_groups_renamed_twice_fall_back_to_the_master_groups(tmp_path):
+    renamed = GROUPED_MASTER.replace("- **Backend:** Python, FastAPI\n- **Tools:** Docker", "**Server:** Python, FastAPI")
+    client = _client_returning(renamed, renamed, renamed, renamed, LETTER_JSON)
+
+    result = _run(tmp_path, _profile_dir_with_master(tmp_path, GROUPED_MASTER), client)
+
+    assert "The skill group 'Server' is not one of the master CV's" in _user_messages(client)[3]
+    draft = (result.company_dir / "_drafts" / "cv.md").read_text(encoding="utf-8")
+    assert "**Server:**" not in draft
+    assert "- **Backend:** Python, FastAPI\n- **Tools:** Docker" in draft

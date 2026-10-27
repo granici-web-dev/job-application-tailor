@@ -61,6 +61,87 @@ def missing_required_skills(
     return missing
 
 
+# A group's line: `- **Frontend:** HTML, CSS` or `**Frontend**: HTML, CSS`.
+GROUP_LINE = re.compile(r"^\s*(?:[-*+]\s+)?\*\*([^*]+?)\s*:?\s*\*\*\s*:?\s*(.*)$")
+
+
+def skill_group_findings(cv_markdown: str, master_markdown: str) -> list[str]:
+    """Where the CV's skill groups depart from the master CV's, as instructions for a retry.
+
+    The groups may be reordered, thinned or left out, but each keeps the master CV's label
+    word for word and holds only skills the master CV files under it. A renamed group reads
+    as a claim of its own ("AI-gestützte Entwicklung" is not "AI-Entwicklung"), and a merged
+    one hides which skills came from where.
+    """
+    master_groups = _skill_groups(master_markdown)
+    if not master_groups:
+        return []
+    labels = ", ".join(f"'{label}'" for label in master_groups)
+    findings: list[str] = []
+    seen: list[str] = []
+    for line in _skills_section_lines(cv_markdown):
+        match = GROUP_LINE.match(line)
+        if not match:
+            findings.append(f"The skills line '{line.strip()}' has no group label. Use the master CV's: {labels}.")
+            continue
+        label, body = match.group(1).strip(), match.group(2)
+        if label not in master_groups:
+            findings.append(
+                f"The skill group '{label}' is not one of the master CV's. Keep its labels word for word, "
+                f"never rename or merge them: {labels}."
+            )
+            continue
+        if label in seen:
+            findings.append(f"The skill group '{label}' appears twice.")
+        seen.append(label)
+        for item in _items(body):
+            # A skill no group holds is unsupported_skills' finding, not a misfiled one.
+            homes = [other for other, text in master_groups.items() if _holds(text, item)]
+            if homes and label not in homes:
+                findings.append(
+                    f"'{item}' is under the skill group '{label}', but the master CV lists it under '{homes[0]}'."
+                )
+    return findings
+
+
+def with_master_skill_groups(cv_markdown: str, master_markdown: str) -> str:
+    """The CV with its skills section replaced by the master CV's groups as they stand."""
+    master_lines = _skills_section_lines(master_markdown)
+    lines = cv_markdown.splitlines()
+    start = next((index for index, line in enumerate(lines) if SKILL_HEADING.match(line)), None)
+    if start is None or not master_lines:
+        return cv_markdown
+    end = next((index for index in range(start + 1, len(lines)) if HEADING.match(lines[index])), len(lines))
+    # A closing rule before the next section belongs to the layout, not to the skills.
+    closing = [line for line in lines[start + 1 : end] if line.strip().startswith("---")][-1:]
+    rebuilt = lines[: start + 1] + ["", *master_lines, ""] + (closing + [""] if closing else []) + lines[end:]
+    text = "\n".join(rebuilt)
+    return text + "\n" if cv_markdown.endswith("\n") else text
+
+
+def _skill_groups(cv_markdown: str) -> dict[str, str]:
+    groups: dict[str, str] = {}
+    for line in _skills_section_lines(cv_markdown):
+        match = GROUP_LINE.match(line)
+        if match:
+            groups[match.group(1).strip()] = match.group(2)
+    return groups
+
+
+def _holds(text: str, item: str) -> bool:
+    spaced = _normalize(text)
+    return _is_supported(item, spaced, spaced.replace(" ", ""))
+
+
+def _items(body: str) -> list[str]:
+    items = []
+    for raw in ITEM_SEPARATORS.split(body):
+        item = raw.replace("*", "").strip(" .()")
+        if item and len(item.split()) <= MAX_ITEM_WORDS:
+            items.append(item)
+    return items
+
+
 def skill_wording(cv_markdown: str) -> list[str]:
     """The skills section's lines as plain text, category labels and parentheses kept.
 
@@ -73,11 +154,7 @@ def skill_wording(cv_markdown: str) -> list[str]:
 def _skill_items(cv_markdown: str) -> list[str]:
     items: list[str] = []
     for line in _skills_section_lines(cv_markdown):
-        body = CATEGORY_LABEL.sub("", LIST_MARKER.sub("", line))
-        for raw in ITEM_SEPARATORS.split(body):
-            item = raw.replace("*", "").strip(" .()")
-            if item and len(item.split()) <= MAX_ITEM_WORDS:
-                items.append(item)
+        items.extend(_items(CATEGORY_LABEL.sub("", LIST_MARKER.sub("", line))))
     return items
 
 

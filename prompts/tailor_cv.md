@@ -18,6 +18,7 @@ ATS formatting rules:
 - Single column. No tables, no multi-column layout, no graphics, no icons, no text boxes, no content in headers or footers.
 - Naturally weave in the job's relevant keywords and hard skills, but only where they genuinely match the candidate's real experience.
 - The posting decides what the skills section leads with. Every hard skill and keyword the posting names that the master CV genuinely backs has to appear in the CV, and comes before the skills the posting has no use for. Leaving out one the candidate really has costs as much as inventing one they do not — read the job analysis skill by skill and check each against the master CV before you write the section.
+- The skills section keeps the master CV's skill groups. Each group's label is copied word for word from the master CV, in its language, whatever the posting's language. You may change the order of the groups and of the skills inside a group, and leave out a group this posting has no use for. Never rename, translate, merge or split a group, and never move a skill into another group.
 - Keep the master CV's own wording for a skill even when the posting words it differently. Matching the posting matters less than not coining a term the candidate never used.
 - Experience bullets start with an action verb and include measurable results where the master CV provides them.
 

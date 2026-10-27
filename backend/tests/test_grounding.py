@@ -1,4 +1,10 @@
-from backend.grounding import missing_required_skills, skill_wording, unsupported_skills
+from backend.grounding import (
+    missing_required_skills,
+    skill_group_findings,
+    skill_wording,
+    unsupported_skills,
+    with_master_skill_groups,
+)
 
 MASTER = """# Serghei Granici
 
@@ -138,3 +144,69 @@ def test_skill_wording_keeps_labels_and_parentheses_whole():
         "Frontend: HTML, React",
         "Qualität: UX/UI-Audits, Accessibility (WCAG 2.2 AA)",
     ]
+
+
+GROUPED_MASTER = """# Serghei Granici
+
+## Kenntnisse und Fähigkeiten
+
+- **Frontend:** HTML, React, TypeScript
+- **AI & Tools:** Claude Code, Figma
+- **AI-Entwicklung:** LLM-Integration (Anthropic API, Tool Use), Prozessautomatisierung
+- **Methoden:** Agile, Kanban
+
+## Berufserfahrung
+
+- Arbeit
+"""
+
+
+def _grouped_cv(skills):
+    return f"# Serghei Granici\n\n## Berufserfahrung\n\n- Arbeit\n\n## Kenntnisse\n\n{skills}\n\n---\n\n## Sprachen\n\n- Deutsch\n"
+
+
+def test_groups_reordered_thinned_and_left_out_pass():
+    cv = _grouped_cv("**AI-Entwicklung:** Prozessautomatisierung, LLM-Integration\n\n**Frontend:** React, HTML")
+
+    assert skill_group_findings(cv, GROUPED_MASTER) == []
+
+
+def test_a_renamed_group_is_caught():
+    cv = _grouped_cv("**AI-gestützte Entwicklung:** LLM-Integration, Prozessautomatisierung")
+
+    findings = skill_group_findings(cv, GROUPED_MASTER)
+
+    assert len(findings) == 1
+    assert findings[0].startswith("The skill group 'AI-gestützte Entwicklung' is not one of the master CV's.")
+
+
+def test_a_skill_moved_into_another_group_is_caught_as_a_merge():
+    cv = _grouped_cv("**AI-Entwicklung:** LLM-Integration, Claude Code")
+
+    assert skill_group_findings(cv, GROUPED_MASTER) == [
+        "'Claude Code' is under the skill group 'AI-Entwicklung', but the master CV lists it under 'AI & Tools'."
+    ]
+
+
+def test_a_skills_line_without_a_label_and_a_doubled_group_are_caught():
+    cv = _grouped_cv("React, HTML\n\n**Frontend:** React\n\n**Frontend:** HTML")
+
+    findings = skill_group_findings(cv, GROUPED_MASTER)
+
+    assert findings[0].startswith("The skills line 'React, HTML' has no group label.")
+    assert findings[1] == "The skill group 'Frontend' appears twice."
+
+
+def test_the_fallback_puts_back_the_master_groups_as_they_stand():
+    cv = _grouped_cv("**AI-gestützte Entwicklung:** LLM-Integration, Claude Code")
+
+    fixed = with_master_skill_groups(cv, GROUPED_MASTER)
+
+    assert fixed == (
+        "# Serghei Granici\n\n## Berufserfahrung\n\n- Arbeit\n\n## Kenntnisse\n\n"
+        "- **Frontend:** HTML, React, TypeScript\n"
+        "- **AI & Tools:** Claude Code, Figma\n"
+        "- **AI-Entwicklung:** LLM-Integration (Anthropic API, Tool Use), Prozessautomatisierung\n"
+        "- **Methoden:** Agile, Kanban\n\n---\n\n## Sprachen\n\n- Deutsch\n"
+    )
+    assert skill_group_findings(fixed, GROUPED_MASTER) == []

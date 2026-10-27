@@ -93,6 +93,7 @@ def test_cv_prompt_carries_no_fabrication_rule_and_profile_content():
     system_prompt, user_message = build_cv_prompt(ANALYSIS, PROFILE)
 
     assert "never add a skill" in system_prompt.lower()
+    assert "Never rename, translate, merge or split a group" in system_prompt
     assert "+49 151 23456789" in user_message
     assert "Siegburg, Germany" in user_message
     assert "German (B2)" in user_message
