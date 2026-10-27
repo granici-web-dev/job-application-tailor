@@ -10,7 +10,7 @@ import pypdf
 import pytest
 from openpyxl import load_workbook
 
-from backend.errors import FactCheckError
+from backend.errors import FactCheckError, JobTitleMissingError
 from backend.pipeline import run_pipeline
 from backend.tracker import read_applications
 
@@ -462,3 +462,40 @@ def test_the_letter_project_paragraph_is_the_sentence_of_the_discipline_project(
     assert "clinic website" not in letter
     assert "_Letter:" not in _user_messages(client)[1] + _user_messages(client)[3]
 
+
+
+UNSOLICITED_JSON = json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initiativbewerbung"})
+
+
+@pytest.mark.parametrize("analysis", [UNSOLICITED_JSON, json.dumps({**json.loads(ANALYSIS_JSON), "job_title": None})])
+def test_a_posting_without_a_position_stops_before_tailoring(tmp_path, analysis):
+    client = Mock()
+    client.messages.create.side_effect = [_message(analysis)]
+
+    with pytest.raises(JobTitleMissingError, match="Название позиции не найдено, укажите его вручную"):
+        _run(tmp_path, PROFILE_DIR, client)
+
+    assert client.messages.create.call_count == 1
+    assert not (tmp_path / "out").exists()
+
+
+def test_a_position_entered_by_hand_replaces_the_missing_one(tmp_path):
+    client = Mock()
+    client.messages.create.side_effect = [
+        _message(UNSOLICITED_JSON), _message(CV_MARKDOWN), _message(CV_MARKDOWN), _message(LETTER_JSON)
+    ]
+
+    result = run_pipeline(
+        job_url="https://example.com/jobs/1",
+        job_text="Initiativbewerbung bei Acme GmbH.",
+        output_dir=tmp_path,
+        profile_dir=PROFILE_DIR,
+        client=client,
+        model="claude-sonnet-4-6",
+        language=None,
+        today=date(2026, 6, 1),
+        job_title="Senior Backend Engineer",
+    )
+
+    assert result.analysis.job_title == "Senior Backend Engineer"
+    assert "Senior Backend Engineer" in _user_messages(client)[1]

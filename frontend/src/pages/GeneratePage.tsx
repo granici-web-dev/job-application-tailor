@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { downloadFile, generateApplication, GenerateResult } from '../api'
+import { ApiError, downloadFile, generateApplication, GenerateResult, JOB_TITLE_MISSING } from '../api'
 import { DownloadIcon } from '../icons'
 
 type Phase = 'idle' | 'loading' | 'success' | 'error'
@@ -14,6 +14,8 @@ export function GeneratePage() {
   const [phase, setPhase] = useState<Phase>('idle')
   const [result, setResult] = useState<GenerateResult | null>(null)
   const [error, setError] = useState('')
+  const [needsJobTitle, setNeedsJobTitle] = useState(false)
+  const [jobTitle, setJobTitle] = useState('')
   const [downloadError, setDownloadError] = useState('')
   const [elapsed, setElapsed] = useState(0)
 
@@ -29,8 +31,21 @@ export function GeneratePage() {
     return () => window.clearInterval(timer)
   }, [phase])
 
-  async function onSubmit(event: FormEvent) {
+  function onSubmit(event: FormEvent) {
     event.preventDefault()
+    setNeedsJobTitle(false)
+    setJobTitle('')
+    void generate()
+  }
+
+  function onSubmitJobTitle(event: FormEvent) {
+    event.preventDefault()
+    if (jobTitle.trim()) {
+      void generate(jobTitle.trim())
+    }
+  }
+
+  async function generate(manualJobTitle?: string) {
     const trimmed = url.trim()
     if (!trimmed) {
       return
@@ -40,15 +55,20 @@ export function GeneratePage() {
     setResult(null)
     setDownloadError('')
     try {
-      const payload: { url: string; text?: string } = { url: trimmed }
+      const payload: { url: string; text?: string; job_title?: string } = { url: trimmed }
       const trimmedText = text.trim()
       if (trimmedText) {
         payload.text = trimmedText
       }
+      if (manualJobTitle) {
+        payload.job_title = manualJobTitle
+      }
       const data = await generateApplication(payload)
+      setNeedsJobTitle(false)
       setResult(data)
       setPhase('success')
     } catch (caught) {
+      setNeedsJobTitle(caught instanceof ApiError && caught.code === JOB_TITLE_MISSING)
       setError(caught instanceof Error ? caught.message : 'Не удалось сгенерировать заявку.')
       setPhase('error')
     }
@@ -150,6 +170,27 @@ export function GeneratePage() {
         <section className="notice notice-error" role="alert">
           {error}
         </section>
+      )}
+
+      {needsJobTitle && !loading && (
+        <form className="generate-form" onSubmit={onSubmitJobTitle}>
+          <div className="field">
+            <input
+              id="job-title"
+              className="text-input"
+              type="text"
+              aria-label="Название позиции"
+              placeholder="Название позиции"
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+              autoComplete="off"
+              autoFocus
+            />
+          </div>
+          <button type="submit" className="btn btn-primary" disabled={jobTitle.trim() === ''}>
+            Сгенерировать
+          </button>
+        </form>
       )}
 
       {phase === 'success' && result && (

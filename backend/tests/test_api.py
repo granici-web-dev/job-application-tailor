@@ -311,3 +311,40 @@ def test_unexpected_failure_returns_json_the_browser_can_read(client):
     assert response.status_code == 500
     assert response.json()["detail"]
     assert response.headers["access-control-allow-origin"] == ALLOWED_ORIGIN
+
+
+def test_a_posting_without_a_position_asks_for_one(client):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    unsolicited = Mock()
+    unsolicited.messages.create.side_effect = [
+        _message(json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initiativbewerbung"}))
+    ]
+    app.dependency_overrides[get_anthropic_client] = lambda: unsolicited
+
+    response = client.post("/generate", json={"url": "https://example.com/jobs/1", "text": "Initiativbewerbung."})
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "Название позиции не найдено, укажите его вручную",
+        "code": "job_title_missing",
+    }
+
+
+def test_a_position_entered_by_hand_goes_to_the_pipeline(client):
+    app.dependency_overrides[get_settings] = lambda: Settings(anthropic_api_key="test", model="claude-sonnet-4-6")
+    fake = _fake_client()
+    fake.messages.create.side_effect = [
+        _message(json.dumps({**json.loads(ANALYSIS_JSON), "job_title": "Initiativbewerbung"})),
+        _message(CV_MARKDOWN),
+        _message(CV_MARKDOWN),
+        _message(LETTER_JSON),
+    ]
+    app.dependency_overrides[get_anthropic_client] = lambda: fake
+
+    response = client.post(
+        "/generate",
+        json={"url": "https://example.com/jobs/1", "text": "Initiativbewerbung.", "job_title": "Backend Engineer"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["analysis"]["job_title"] == "Backend Engineer"

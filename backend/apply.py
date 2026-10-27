@@ -31,6 +31,7 @@ def main(argv: list[str] | None = None) -> int:
             language=args.lang,
             today=date.today(),
             include_photo=args.include_photo,
+            job_title=args.job_title,
         )
     except TailorError as error:
         print(str(error), file=sys.stderr)
@@ -62,6 +63,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument(
         "--lang",
         help="Force the output language. Defaults to the posting's language.",
+    )
+    parser.add_argument(
+        "--job-title",
+        help="The position's name, for a posting that names none (an Initiativbewerbung).",
     )
     parser.add_argument(
         "--output-dir",

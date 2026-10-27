@@ -35,3 +35,10 @@ class ApplicationNotFoundError(TailorError):
 
 class FactCheckError(TailorError):
     pass
+
+
+class JobTitleMissingError(TailorError):
+    """The posting names no position; the pipeline waits for one entered by hand."""
+
+    def __init__(self) -> None:
+        super().__init__("Название позиции не найдено, укажите его вручную")

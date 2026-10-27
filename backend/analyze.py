@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from anthropic import Anthropic
@@ -12,6 +13,13 @@ from backend.models import JobAnalysis
 PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "analyze.md"
 MAX_TOKENS = 2000
 ANALYSIS_ATTEMPTS = 2
+# A title that names an unsolicited application, not a position.
+UNSOLICITED = re.compile(r"initiativbewerbung|initiative|unsolicited", re.IGNORECASE)
+
+
+def names_a_position(job_title: str) -> bool:
+    """False when the analysis found no position: no title, or an Initiativbewerbung."""
+    return bool(job_title.strip()) and not UNSOLICITED.search(job_title)
 
 
 def analyze_job(job_text: str, *, client: Anthropic, model: str) -> JobAnalysis:

@@ -70,3 +70,8 @@ def test_job_analysis_keeps_the_ai_discipline():
     analysis = JobAnalysis.from_response_dict(_minimal_response(discipline="ai"))
 
     assert analysis.discipline == "ai"
+
+
+def test_a_missing_job_title_is_left_empty_for_the_pipeline_to_ask_for():
+    assert JobAnalysis.from_response_dict({"company_name": "Acme GmbH", "job_title": None}).job_title == ""
+    assert JobAnalysis.from_response_dict({"company_name": "Acme GmbH"}).job_title == ""

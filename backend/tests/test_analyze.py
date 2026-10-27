@@ -4,7 +4,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from backend.analyze import _strip_json_fences, analyze_job
+from backend.analyze import _strip_json_fences, analyze_job, names_a_position
 from backend.errors import JobAnalysisError
 from backend.models import JobAnalysis
 
@@ -63,3 +63,15 @@ def test_analyze_raises_after_two_invalid_responses():
 
 def test_strip_json_fences_passes_through_plain_json():
     assert _strip_json_fences('{"a": 1}') == '{"a": 1}'
+
+
+@pytest.mark.parametrize(
+    "job_title",
+    ["", "  ", "Initiativbewerbung", "Initiativbewerbung (m/w/d)", "Initiative Bewerbung", "Unsolicited application"],
+)
+def test_a_missing_or_unsolicited_title_names_no_position(job_title):
+    assert not names_a_position(job_title)
+
+
+def test_a_posting_title_names_a_position():
+    assert names_a_position("Frontend Developer (m/w/d) React / TypeScript")

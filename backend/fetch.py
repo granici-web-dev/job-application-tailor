@@ -12,7 +12,9 @@ USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
-STRIPPED_TAGS = ["script", "style", "noscript", "nav", "header", "footer", "aside", "form"]
+# The page title goes too: it names the site as often as the position, and a missing
+# position is asked for by hand rather than taken from it.
+STRIPPED_TAGS = ["title", "script", "style", "noscript", "nav", "header", "footer", "aside", "form"]
 MINIMUM_READABLE_LENGTH = 200
 
 

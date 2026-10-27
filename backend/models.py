@@ -35,7 +35,8 @@ class JobAnalysis:
             discipline = "unknown"
         return cls(
             company_name=_require_text(data.get("company_name"), "company_name"),
-            job_title=_require_text(data.get("job_title"), "job_title"),
+            # Empty when the posting names no position; the pipeline stops and asks for one.
+            job_title=_optional_text(data.get("job_title")) or "",
             employment_type=employment_type,
             employee_count=_optional_text(data.get("employee_count")),
             location=_optional_text(data.get("location")),

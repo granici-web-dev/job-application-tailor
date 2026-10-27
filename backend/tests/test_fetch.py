@@ -103,3 +103,9 @@ def test_read_job_text_file_raises_on_non_utf8(tmp_path):
 
     with pytest.raises(JobFetchError, match="UTF-8"):
         read_job_text_file(str(job_file))
+
+
+def test_the_page_title_is_not_part_of_the_posting_text():
+    html = "<html><head><title>Karriere | Acme GmbH</title></head><body><p>Initiativbewerbung</p></body></html>"
+
+    assert extract_main_text(html) == "Initiativbewerbung"

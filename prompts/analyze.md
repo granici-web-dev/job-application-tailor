@@ -20,7 +20,8 @@ The JSON object must have exactly these keys:
 }
 
 Rules:
-- `company_name` and `job_title` are always present. Extract them from the posting.
+- `company_name` is always present. Extract it from the posting.
+- `job_title` is the position's name as the posting text writes it, copied as it stands, including a word like Initiativbewerbung. Use null when the posting names no position. Never take it from a page title, a site name or a link.
 - `employee_count` is rarely stated. If the posting does not mention company size, use null. Do not guess.
 - `discipline` is the craft the role is primarily hired for, and decides what the application leads with.
   - Use `design` when the work is mainly UI/UX, product, visual or brand design, or user research — typical titles are UI/UX Designer, Product Designer, Webdesigner, Grafikdesigner, Art Director.

@@ -8,8 +8,8 @@ from pathlib import Path
 
 from anthropic import Anthropic
 
-from backend.analyze import analyze_job
-from backend.errors import FactCheckError
+from backend.analyze import analyze_job, names_a_position
+from backend.errors import FactCheckError, JobTitleMissingError
 from backend.factcheck import check_cv, check_letter, fact_check_correction
 from backend.fetch import fetch_job_text
 from backend.grounding import skill_group_findings, with_master_skill_groups
@@ -70,6 +70,7 @@ def run_pipeline(
     language: str | None,
     today: date,
     include_photo: bool = True,
+    job_title: str | None = None,
 ) -> PipelineResult:
     if job_text is None:
         logger.info("Fetching job posting from %s", job_url)
@@ -77,6 +78,12 @@ def run_pipeline(
 
     logger.info("Analyzing job posting")
     analysis = analyze_job(job_text, client=client, model=model)
+    if job_title and job_title.strip():
+        analysis = replace(analysis, job_title=job_title.strip())
+    elif not names_a_position(analysis.job_title):
+        # Never a page title or a guess in its place: the position goes on the CV and the letter.
+        logger.warning("The posting names no position (%r); asking for one", analysis.job_title)
+        raise JobTitleMissingError()
 
     logger.info("Loading profile from %s", profile_dir)
     profile = load_profile(profile_dir)

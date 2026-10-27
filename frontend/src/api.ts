@@ -35,26 +35,45 @@ export interface GenerateResult {
   files: FileLinks
 }
 
-async function errorMessage(response: Response): Promise<string> {
+export const JOB_TITLE_MISSING = 'job_title_missing'
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly code?: string,
+  ) {
+    super(message)
+  }
+}
+
+async function apiError(response: Response): Promise<ApiError> {
   try {
     const data = await response.json()
     if (typeof data.detail === 'string') {
-      return data.detail
+      return new ApiError(data.detail, typeof data.code === 'string' ? data.code : undefined)
     }
   } catch {
     // fall through to a generic message
   }
-  return `Ошибка запроса (${response.status}).`
+  return new ApiError(`Ошибка запроса (${response.status}).`)
 }
 
-export async function generateApplication(input: { url: string; text?: string }): Promise<GenerateResult> {
+async function errorMessage(response: Response): Promise<string> {
+  return (await apiError(response)).message
+}
+
+export async function generateApplication(input: {
+  url: string
+  text?: string
+  job_title?: string
+}): Promise<GenerateResult> {
   const response = await fetch(`${API_URL}/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(input),
   })
   if (!response.ok) {
-    throw new Error(await errorMessage(response))
+    throw await apiError(response)
   }
   return response.json()
 }

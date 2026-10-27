@@ -12,7 +12,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, field_validator
 
 from backend.config import Settings, frontend_origins, load_settings, make_anthropic_client
-from backend.errors import ApplicationNotFoundError, TailorError, TrackerError
+from backend.errors import ApplicationNotFoundError, JobTitleMissingError, TailorError, TrackerError
 from backend.pipeline import TRACKER_FILENAME, run_pipeline
 from backend.tracker import (
     ALLOWED_STATUSES,
@@ -50,6 +50,7 @@ class GenerateRequest(BaseModel):
     url: str
     text: str | None = None
     lang: str | None = None
+    job_title: str | None = None
 
 
 class GenerateResponse(BaseModel):
@@ -129,6 +130,12 @@ async def _handle_tracker_locked(request: Request, exc: TrackerError) -> JSONRes
     return JSONResponse(status_code=409, content={"detail": str(exc)})
 
 
+@app.exception_handler(JobTitleMissingError)
+async def _handle_job_title_missing(request: Request, exc: JobTitleMissingError) -> JSONResponse:
+    # The code lets the page offer a field for the title instead of a dead end.
+    return JSONResponse(status_code=422, content={"detail": str(exc), "code": "job_title_missing"})
+
+
 @app.exception_handler(TailorError)
 async def _handle_tailor_error(request: Request, exc: TailorError) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
@@ -150,6 +157,7 @@ def generate(
         model=settings.model,
         language=request.lang,
         today=date.today(),
+        job_title=request.job_title,
     )
     company = result.company_dir.name
     cv_pdf = result.cv_pdf_path.name
