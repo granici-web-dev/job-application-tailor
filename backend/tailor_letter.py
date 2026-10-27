@@ -20,7 +20,7 @@ LETTER_PROMPT_PATH = Path(__file__).resolve().parent.parent / "prompts" / "tailo
 MAX_TOKENS = 1500
 MAX_LETTER_WORDS = 300
 # At most this many sentences of the adjustable paragraph may differ from the template.
-MAX_CHANGED_SENTENCES = 1
+MAX_ADDED_SENTENCES = 1
 MAX_CHANGED_SENTENCE_WORDS = 30
 # A dash between spaces sets off an insertion; a hyphen inside a compound ("WCAG-Audit") does not.
 INSERTION_DASH = re.compile(r"\s[–—-]\s")
@@ -157,15 +157,26 @@ def template_findings(letter: str, template: LetterTemplate, analysis: JobAnalys
         if _squashed(got) != _squashed(want):
             findings.append(f"The paragraph starting '{_start(want)}' must match the template word for word.")
 
+    # The template's sentences all stay, in order; the model may only add one of its own.
     template_sentences = [_squashed(s) for s in _sentences(fill_placeholders(template.adjustable, analysis))]
     adjusted_sentences = [_squashed(s) for s in _sentences(paragraphs[2])]
     added = [s for s in adjusted_sentences if s not in template_sentences]
     removed = [s for s in template_sentences if s not in adjusted_sentences]
-    if max(len(added), len(removed)) > MAX_CHANGED_SENTENCES:
+    for sentence in removed:
         findings.append(
-            f"In the paragraph starting '{_start(template.adjustable)}', {max(len(added), len(removed))} "
-            f"sentences differ from the template; change at most {MAX_CHANGED_SENTENCES} and copy the "
-            "rest word for word."
+            f"In the paragraph starting '{_start(template.adjustable)}', the template's sentence "
+            f"'{sentence}' is missing or changed. Every sentence of the template stays word for word; "
+            "you may only add one of your own."
+        )
+    if not removed and [s for s in adjusted_sentences if s in template_sentences] != template_sentences:
+        findings.append(
+            f"In the paragraph starting '{_start(template.adjustable)}', the template's sentences "
+            "must stay in the template's order."
+        )
+    if len(added) > MAX_ADDED_SENTENCES:
+        findings.append(
+            f"In the paragraph starting '{_start(template.adjustable)}', you added {len(added)} "
+            f"sentences; add at most {MAX_ADDED_SENTENCES}."
         )
 
     leftover = PLACEHOLDER.findall(letter)

@@ -199,23 +199,56 @@ def test_the_fixed_paragraphs_go_in_word_for_word_with_placeholders_filled():
     assert _findings(letter) == []
 
 
-def test_one_changed_sentence_in_the_adjustable_paragraph_is_allowed():
+def test_one_added_sentence_in_the_adjustable_paragraph_is_allowed():
+    added = CORLAB + " Dabei arbeite ich durchgängig mit Claude Code."
+    added_in_between = CORLAB.replace(
+        "Verwaltungssystem. Ein", "Verwaltungssystem. Dabei arbeite ich durchgängig mit Claude Code. Ein"
+    )
+
+    assert _findings(_letter(adjusted=added)) == []
+    assert _findings(_letter(adjusted=added_in_between)) == []
+
+
+def test_a_replaced_template_sentence_is_caught():
     replaced = CORLAB.replace(
         "Ein zweites System habe ich auditiert.", "Ein zweites System habe ich auditiert und neu gestaltet."
     )
-    added = CORLAB + " Dabei arbeite ich durchgängig mit Claude Code."
 
-    assert _findings(_letter(adjusted=replaced)) == []
-    assert _findings(_letter(adjusted=added)) == []
+    assert _findings(_letter(adjusted=replaced)) == [
+        "In the paragraph starting 'Aktuell verantworte ich bei CorLab Projekte …', the template's sentence "
+        "'Ein zweites System habe ich auditiert.' is missing or changed. Every sentence of the template "
+        "stays word for word; you may only add one of your own."
+    ]
 
 
-def test_two_changed_sentences_in_the_adjustable_paragraph_are_caught():
-    adjusted = CORLAB.replace("komplett selbst.", "eigenständig.").replace("auditiert.", "geprüft.")
+def test_a_dropped_template_sentence_is_caught():
+    dropped = CORLAB.replace(" Für eine staatliche Stelle entwerfe ich ein Verwaltungssystem.", "")
 
-    findings = _findings(_letter(adjusted=adjusted))
+    findings = _findings(_letter(adjusted=dropped))
 
     assert len(findings) == 1
-    assert "2 sentences differ from the template; change at most 1" in findings[0]
+    assert "'Für eine staatliche Stelle entwerfe ich ein Verwaltungssystem.' is missing or changed" in findings[0]
+
+
+def test_reordered_template_sentences_are_caught():
+    reordered = (
+        "Aktuell verantworte ich bei CorLab Projekte komplett selbst. Ein zweites System habe ich "
+        "auditiert. Für eine staatliche Stelle entwerfe ich ein Verwaltungssystem."
+    )
+
+    assert _findings(_letter(adjusted=reordered)) == [
+        "In the paragraph starting 'Aktuell verantworte ich bei CorLab Projekte …', the template's "
+        "sentences must stay in the template's order."
+    ]
+
+
+def test_two_added_sentences_are_caught():
+    adjusted = CORLAB + " Dabei arbeite ich mit Claude Code. Außerdem prüfe ich die Barrierefreiheit."
+
+    assert _findings(_letter(adjusted=adjusted)) == [
+        "In the paragraph starting 'Aktuell verantworte ich bei CorLab Projekte …', you added 2 "
+        "sentences; add at most 1."
+    ]
 
 
 def test_a_reworded_fixed_paragraph_is_caught():
