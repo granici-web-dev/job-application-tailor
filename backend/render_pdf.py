@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import re
 from dataclasses import dataclass
 
 import markdown as markdown_lib
@@ -80,6 +81,9 @@ ul { margin: 3pt 0 6pt 16pt; padding: 0; }
 li { margin: 0 0 2pt; }
 a { color: #111111; text-decoration: none; }
 strong { font-weight: 600; color: #111111; }
+/* One value of the header — an address, an e-mail, a URL — never breaks inside; a line too
+   long for the page breaks at the " · " between two of them. */
+.header-item { white-space: nowrap; }
 /* A section the page limit starts a new page with: `## Kenntnisse {: .new-page }`. */
 .new-page { break-before: page; }
 """
@@ -204,11 +208,42 @@ def _laid_out(markdown_text: str, css: str, photo: bytes | None, include_photo: 
     # The CV header and the skills block put each entry on its own line; without nl2br
     # Markdown folds them into one run-on paragraph and the separators disappear.
     extensions = ["extra", "nl2br"] if line_breaks else ["extra"]
-    body_html = markdown_lib.markdown(markdown_text, extensions=extensions)
+    body_html = _unbroken_header_items(markdown_lib.markdown(markdown_text, extensions=extensions))
     if photo is not None and include_photo:
         body_html = f'<img class="cv-photo" src="{_image_data_uri(photo)}" alt="">' + body_html
     html = HTML(string=HTML_DOCUMENT.format(css=css, body=body_html))
     return html, html.render()
+
+
+HEADER_SEPARATOR = " · "
+HEADER_END = re.compile(r"<h2|<hr")
+PARAGRAPH = re.compile(r"(<p>)(.*?)(</p>)", re.S)
+LINE_BREAK = re.compile(r"(<br\s*/?>\s*)")
+
+
+def _unbroken_header_items(body_html: str) -> str:
+    """Each " · "-separated value of the CV header in its own unbreakable span.
+
+    The header is what stands between the name heading and the first section; a document
+    that does not open with a name heading (the letter) has none.
+    """
+    if not body_html.lstrip().startswith("<h1"):
+        return body_html
+    end = HEADER_END.search(body_html)
+    cut = end.start() if end else len(body_html)
+    header = PARAGRAPH.sub(lambda match: match.group(1) + _wrapped_lines(match.group(2)) + match.group(3), body_html[:cut])
+    return header + body_html[cut:]
+
+
+def _wrapped_lines(paragraph: str) -> str:
+    parts = LINE_BREAK.split(paragraph)
+    # The split keeps the <br> between lines at the odd indexes.
+    return "".join(
+        part if index % 2 else HEADER_SEPARATOR.join(
+            f'<span class="header-item">{item}</span>' for item in part.split(HEADER_SEPARATOR)
+        )
+        for index, part in enumerate(parts)
+    )
 
 
 def _image_data_uri(photo: bytes) -> str:

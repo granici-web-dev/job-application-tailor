@@ -1,9 +1,17 @@
 import inspect
 import io
 
+import markdown as markdown_lib
 import pypdf
 
-from backend.render_pdf import CV_CSS, LETTER_CSS, render_markdown_to_pdf
+from backend.render_pdf import (
+    CV_CSS,
+    LETTER_CSS,
+    CvLayout,
+    _unbroken_header_items,
+    cv_css,
+    render_markdown_to_pdf,
+)
 
 CV_MARKDOWN = """# Ivan Petrov
 
@@ -75,3 +83,37 @@ def test_render_letter_unchanged_single_column_selectable_text():
     assert pdf.startswith(b"%PDF")
     assert _images(pdf) == []
     assert "Kind regards" in _text(pdf)
+
+
+HEADER_CV = """# Serghei Granici
+
+**Frontend Developer React / TypeScript**
+
+granici.design@gmail.com · +49 1727014108 · Wacholderweg 6, 53757 Sankt Augustin
+LinkedIn: https://www.linkedin.com/in/serghei-granici/ · GitHub: https://github.com/granici-web-dev
+
+---
+
+## Profil
+
+Fullstack-Entwickler.
+"""
+
+
+def test_the_header_breaks_only_between_its_values(tiny_jpeg):
+    for layout in (CvLayout(), CvLayout(compact_spacing=True, margin_vertical_mm=15, margin_horizontal_mm=15)):
+        pdf = render_markdown_to_pdf(HEADER_CV, css=cv_css(layout), photo=tiny_jpeg, line_breaks=True)
+        lines = _text(pdf).splitlines()
+
+        assert any("Wacholderweg 6, 53757 Sankt Augustin" in line for line in lines), lines
+        assert any("https://github.com/granici-web-dev" in line for line in lines), lines
+        assert any("https://www.linkedin.com/in/serghei-granici/" in line for line in lines), lines
+
+
+def test_only_the_cv_header_is_held_together():
+    html = _unbroken_header_items(markdown_lib.markdown(HEADER_CV, extensions=["extra", "nl2br"]))
+
+    assert html.count('class="header-item"') == 6  # headline, three contact values, two links
+    assert '<span class="header-item">Wacholderweg 6, 53757 Sankt Augustin</span>' in html
+    assert "header-item" not in html.split("<h2", 1)[1]
+    assert _unbroken_header_items("<p>Ivan · Petrov</p>") == "<p>Ivan · Petrov</p>"
