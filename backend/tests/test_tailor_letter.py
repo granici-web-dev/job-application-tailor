@@ -13,7 +13,7 @@ from backend.tailor_letter import (
     build_letterhead,
     build_letter_prompt,
     changed_sentence_findings,
-    company_sentence,
+    intro_findings,
     parse_letter_template,
     restore_template_paragraph,
     stack_match,
@@ -420,7 +420,26 @@ def test_an_unsolicited_opening_that_speaks_of_the_company_passes():
     )
 
     assert unsolicited_intro_findings(letter, UNSOLICITED) == []
-    assert company_sentence(letter) == "Die Agentur entwickelt Webanwendungen und Portale für den Mittelstand."
+
+
+def test_an_opening_that_describes_the_posting_has_no_forbidden_wording():
+    letter = _letter_opening(
+        "die Stelle als Fullstack-Entwickler bei der Lichtwerk Digital GmbH verbindet AdTech und SaaS "
+        "– eine Kombination, die mich besonders anspricht."
+    )
+
+    assert intro_findings(letter) == []
+
+
+def test_an_opening_with_the_prompts_forbidden_claim_is_caught():
+    letter = _letter_opening(
+        "die Stelle reizt mich sehr – an dieser Schnittstelle arbeite ich bereits."
+    )
+
+    findings = intro_findings(letter)
+
+    assert len(findings) == 1
+    assert findings[0].startswith("The opening paragraph says 'arbeite ich bereits'.")
 
 
 def test_an_unsolicited_opening_that_reads_as_a_vacancy_is_caught():

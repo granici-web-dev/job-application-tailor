@@ -51,9 +51,9 @@ from backend.tailor_cv import (
 from backend.tailor_letter import (
     build_letterhead,
     changed_sentence_findings,
+    intro_findings,
     parse_letter_template,
     restore_template_paragraph,
-    company_sentence,
     tailor_letter,
     template_findings,
     unsolicited_intro_findings,
@@ -67,6 +67,9 @@ logger = logging.getLogger(__name__)
 TRACKER_FILENAME = "applications_tracker.xlsx"
 DRAFTS_DIRNAME = "_drafts"
 MAX_FACT_CHECK_RETRIES = 2
+# The letter gets one retry: a second rarely fixes what the first did not, and a letter that
+# still fails goes back with its draft, to be corrected by hand.
+LETTER_FACT_CHECK_RETRIES = 1
 
 
 @dataclass(frozen=True)
@@ -249,19 +252,23 @@ def run_pipeline(
 
     def check_letter_body(letter: str) -> list[str]:
         opening = unsolicited_intro_findings(letter, analysis) if unsolicited else []
-        # In an unsolicited application the opening's second sentence quotes the company's page.
-        names = posting_names + [company_sentence(letter)] if unsolicited else posting_names
         return template_findings(letter, letter_template, analysis) + changed_sentence_findings(
             letter, letter_template, analysis, profile.master_cv_markdown
-        ) + opening + check_letter(
+        ) + intro_findings(letter) + opening + check_letter(
             letter,
             profile.master_cv_markdown,
             posting_terms=posting_terms,
             allowed_text=allowed_text,
-            posting_names=names,
+            posting_names=posting_names,
         )
 
-    cover_letter_markdown = _fact_checked(draft_letter, check_letter_body, kind="cover letter")
+    cover_letter_markdown = _fact_checked(
+        draft_letter,
+        check_letter_body,
+        kind="cover letter",
+        retries=LETTER_FACT_CHECK_RETRIES,
+        report_draft=True,
+    )
     logger.info("Cover letter body has %d words", len(cover_letter_markdown.split()))
     # The letterhead is built from data and goes on after the check, which reads the body only.
     cover_letter_markdown = (
@@ -312,15 +319,18 @@ def _fact_checked(
     check: Callable[[str], list[str]],
     *,
     kind: str,
+    retries: int = MAX_FACT_CHECK_RETRIES,
+    report_draft: bool = False,
 ) -> str:
     """A draft that passes the fact check, or FactCheckError — never a draft that fails it.
 
-    Each failed attempt is retried with its findings attached, up to MAX_FACT_CHECK_RETRIES
-    times.
+    Each failed attempt is retried with its findings attached, up to `retries` times. With
+    `report_draft`, the error carries the last draft, so it can be corrected by hand.
     """
     feedback: str | None = None
     findings: list[str] = []
-    attempts = MAX_FACT_CHECK_RETRIES + 1
+    text = ""
+    attempts = retries + 1
     for attempt in range(1, attempts + 1):
         text = draft(feedback)
         findings = check(text)
@@ -333,9 +343,12 @@ def _fact_checked(
             kind, attempt, attempts, "\n- ".join(findings),
         )
         feedback = fact_check_correction(findings)
-    raise FactCheckError(
+    message = (
         f"The {kind} still states things the master CV does not back after {attempts} attempts, "
         "so no documents were written:\n- " + "\n- ".join(findings)
     )
+    if report_draft:
+        message += f"\n\nThe last draft, to correct by hand:\n\n{text.strip()}"
+    raise FactCheckError(message)
 
 

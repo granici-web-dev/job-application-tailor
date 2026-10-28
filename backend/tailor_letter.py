@@ -45,6 +45,18 @@ PLACEHOLDER = re.compile(r"\[[A-ZÄÖÜ][^\]]*\]")
 SENTENCE_END = re.compile(r"(?<=[.!?])\s+(?=[A-ZÄÖÜ])")
 # A word that presumes a vacancy, also as the head of a compound ("Stellenanzeige").
 VACANCY_WORD = re.compile(r"(?<!\w)(?:stelle|ausschreibung|position)\w*", re.IGNORECASE)
+# What the prompt's rules keep out of the opening: the claims about the candidate's work it
+# names, the handover wording, and the assessments of a result. Checked in code, since the
+# opening is the one paragraph written fresh.
+INTRO_FORBIDDEN = (
+    re.compile(r"arbeite ich bereits", re.IGNORECASE),
+    re.compile(r"trifft den Kern", re.IGNORECASE),
+    re.compile(r"Übergabe an die Entwicklung", re.IGNORECASE),
+    re.compile(r"für das Entwicklungsteam", re.IGNORECASE),
+    re.compile(r"\breibungslos\w*", re.IGNORECASE),
+    re.compile(r"\bspürbar\w*", re.IGNORECASE),
+    re.compile(r"ohne dass Rückfragen", re.IGNORECASE),
+)
 
 
 @dataclass(frozen=True)
@@ -322,11 +334,20 @@ def unsolicited_intro_findings(letter: str, analysis: JobAnalysis) -> list[str]:
     return findings
 
 
-def company_sentence(letter: str) -> str:
-    """The opening's second sentence: in an unsolicited application, what the company does."""
+def intro_findings(letter: str) -> list[str]:
+    """Where the opening uses wording the prompt's rules forbid."""
     paragraphs = [p.strip() for p in re.split(r"\n\s*\n", letter) if p.strip()]
-    sentences = _sentences(paragraphs[1]) if len(paragraphs) > 1 else []
-    return sentences[1] if len(sentences) > 1 else ""
+    if len(paragraphs) < 2:
+        return []
+    findings: list[str] = []
+    for pattern in INTRO_FORBIDDEN:
+        match = pattern.search(paragraphs[1])
+        if match:
+            findings.append(
+                f"The opening paragraph says '{match.group(0)}'. It speaks about the posting "
+                "only: no claim about the candidate's own work, and no assessment of a result."
+            )
+    return findings
 
 
 def restore_template_paragraph(letter: str, template: LetterTemplate, analysis: JobAnalysis) -> str:

@@ -200,16 +200,95 @@ def test_posting_terms_inside_the_job_title_and_company_in_the_letter_pass():
     assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == []
 
 
-def test_a_posting_term_outside_the_job_title_in_the_letter_is_still_caught():
+def test_a_posting_term_the_opening_claims_for_the_candidate_is_caught():
     letter = LETTER.replace(
         "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
         "mit großem Interesse habe ich Ihre Ausschreibung als Business Analyst Digitale "
-        "Plattformen gelesen. Barrierefreiheit liegt mir am Herzen.",
+        "Plattformen gelesen. Mit Barrierefreiheit arbeite ich seit Jahren.",
     )
 
     assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == [
         "'Barrierefreiheit' does not appear in the master CV."
     ]
+
+
+def test_a_posting_term_outside_the_opening_is_caught_wherever_it_stands():
+    letter = LETTER.replace(
+        "Davor war ich über zehn Jahre im UI/UX-Design tätig",
+        "Barrierefreiheit liegt mir am Herzen. Davor war ich über zehn Jahre im UI/UX-Design tätig",
+    )
+
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == [
+        "'Barrierefreiheit' does not appear in the master CV."
+    ]
+
+
+POSTING_INTRO_TERMS = ["AdTech", "SaaS", "Remote", "React"]
+
+
+def test_the_opening_may_describe_the_posting_in_its_own_terms():
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "mit großem Interesse habe ich Ihre Ausschreibung als Frontend Developer im AdTech-Bereich "
+        "gelesen. Die Verbindung aus SaaS-Produkt und Remote-Arbeit ist eine Kombination, die mich "
+        "besonders anspricht.",
+    )
+
+    assert _check_letter(letter, posting_terms=POSTING_INTRO_TERMS) == []
+
+
+def test_the_openings_idioms_of_interest_describe_the_posting():
+    letter = LETTER.replace(
+        "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+        "Ihre Ausschreibung hat mein Interesse geweckt, weil sie AdTech und SaaS verbindet. "
+        "Als Unternehmen, das für Remote-Arbeit bekannt ist, interessiert mich Ihr Haus sehr.",
+    )
+
+    assert _check_letter(letter, posting_terms=POSTING_INTRO_TERMS) == []
+
+
+def test_the_openings_claims_about_the_candidate_are_held_to_the_master_cv():
+    claims = {
+        "ich arbeite": "Mit AdTech arbeite ich täglich.",
+        "ich beschäftige mich": "Das ist genau das, womit ich mich täglich beschäftige: AdTech.",
+        "mein": "AdTech ist mein Schwerpunkt.",
+        "ist mir vertraut": "AdTech ist mir aus dem Alltag vertraut.",
+        "number": "Ich bringe 15 Jahre Erfahrung mit.",
+    }
+    for sentence in claims.values():
+        letter = LETTER.replace(
+            "mit großem Interesse habe ich Ihre Ausschreibung gelesen.",
+            "mit großem Interesse habe ich Ihre Ausschreibung gelesen. " + sentence,
+        )
+        assert _check_letter(letter, posting_terms=POSTING_INTRO_TERMS) != [], sentence
+
+
+def test_a_posting_term_in_the_corlab_paragraph_is_caught():
+    letter = LETTER.replace(
+        "Ein zweites, bestehendes System habe ich auditiert und neu gestaltet.",
+        "Ein zweites, bestehendes System habe ich auditiert und für AdTech neu gestaltet.",
+    )
+
+    assert _check_letter(letter, posting_terms=POSTING_INTRO_TERMS) == [
+        "'AdTech' does not appear in the master CV."
+    ]
+
+
+def test_a_posting_term_of_two_technologies_passes_when_the_master_cv_has_both():
+    letter = LETTER.replace("mit Next.js, NestJS", "mit Next.js, React, NestJS")
+
+    assert _check_letter(letter, posting_terms=["Next.js / React"]) == []
+    assert _check_letter(letter, posting_terms=["Next.js/React"]) == []
+
+
+def test_a_posting_term_of_two_technologies_looks_for_the_one_the_master_cv_lacks():
+    letter = LETTER.replace("mit Next.js, NestJS", "mit Next.js, Vue, NestJS")
+
+    assert _check_letter(letter, posting_terms=["Next.js / Vue"]) == [
+        "'Vue' does not appear in the master CV."
+    ]
+    # Without the missing part, the shared one is no finding.
+    assert _check_letter(LETTER, posting_terms=["Next.js / Vue"]) == []
 
 
 def test_a_title_term_used_as_a_claim_outside_the_title_is_still_caught():
@@ -405,10 +484,7 @@ def test_posting_terms_in_the_company_sentence_of_an_unsolicited_letter_pass():
         "ich bewerbe mich initiativ. " + sentence,
     )
 
-    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=[*BA_NAMES, sentence]) == []
-    assert "'Barrierefreiheit' does not appear in the master CV." in check_letter(
-        letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES
-    )
+    assert check_letter(letter, MASTER, posting_terms=BA_TERMS, posting_names=BA_NAMES) == []
 
 
 THREE_SYSTEMS_MASTER = """# Serghei Granici
@@ -441,7 +517,8 @@ ARZTPRAXIS = (
 
 def _corlab_letter(*sentences):
     return (
-        "Sehr geehrte Damen und Herren,\n\nAktuell verantworte ich bei CorLab Projekte komplett selbst. "
+        "Sehr geehrte Damen und Herren,\n\nmit großem Interesse habe ich Ihre Ausschreibung gelesen."
+        "\n\nAktuell verantworte ich bei CorLab Projekte komplett selbst. "
         + " ".join(sentences)
         + "\n\nMit freundlichen Grüßen\nSerghei Granici"
     )

@@ -277,15 +277,21 @@ def test_a_cv_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path)
     assert not (tmp_path / "out").exists()
 
 
-def test_a_letter_that_fails_the_fact_check_three_times_stops_the_pipeline(tmp_path):
+def test_a_letter_that_fails_the_fact_check_twice_stops_with_its_last_draft(tmp_path):
     bad_letter = json.dumps(
-        {**json.loads(LETTER_JSON), "intro": "At DataForge GmbH I served 99 clients."}
+        {**json.loads(LETTER_JSON), "intro": "At DataForge GmbH I have worked for 99 clients."}
     )
     client = _client_returning(SHORT_MASTER, SHORT_MASTER, *[bad_letter] * 3)
 
-    with pytest.raises(FactCheckError, match="cover letter"):
+    with pytest.raises(FactCheckError, match="cover letter") as caught:
         _run(tmp_path, _profile_dir_with_master(tmp_path, SHORT_MASTER), client)
 
+    # The analysis, two CV calls, and the letter twice: one retry, not two.
+    assert client.messages.create.call_count == 5
+    message = str(caught.value)
+    assert "after 2 attempts" in message
+    assert "The number 99 does not appear in the master CV." in message
+    assert "The last draft, to correct by hand:\n\nDear Hiring Team,\n\nAt DataForge GmbH I have worked for 99 clients." in message
     assert not (tmp_path / "out").exists()
 
 

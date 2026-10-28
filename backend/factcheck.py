@@ -17,6 +17,13 @@ What counts as a technology or method is read from the master CV's own skills se
 the posting's skills that the master CV does not back — those are the ones a model imports.
 A posting term that occurs only inside the posting's job title or company name is a quote of
 the posting, not an import: "Business Analyst" in "Ihre Ausschreibung als Business Analyst".
+A posting term of two technologies ("Next.js / React") is held part by part: it is backed when
+the master CV backs each part, and the parts it lacks are the ones looked for.
+
+A cover letter's opening paragraph describes the posting and the company, so the posting's
+terms in it are theirs, not the candidate's. Only a sentence of the opening that speaks of
+the candidate — "arbeite ich bereits mit React", "mein Stack", "ist mir vertraut" — is held
+to the master CV; "habe ich Ihre Ausschreibung gelesen" and "reizt mich" make no claim.
 """
 
 from __future__ import annotations
@@ -64,6 +71,35 @@ ADJECTIVE_ENDING = re.compile(r"(lich|isch|ig|bar|sam|haft)(e|en|er|es|em)?$")
 # turns up in nearly every entry under some other spelling.
 MIN_TERM_LENGTH = 3
 MAX_POSTING_TERM_WORDS = 4
+# A posting term's parts: "Next.js / React", "Next.js/React".
+TERM_PART_SEPARATOR = "/"
+
+# The letter's paragraphs: the salutation first, then the opening about the posting.
+INTRO_INDEX = 1
+# What makes a sentence of the opening a claim about the candidate: a possessive on its own
+# ("mein Stack"), the subject with a verb of doing or having ("arbeite ich bereits mit"), or
+# the object with a predicate of acquaintance ("ist mir vertraut"). "habe ich Ihre
+# Ausschreibung gelesen", "hat mein Interesse geweckt" and "reizt mich die Verbindung aus
+# AdTech" claim nothing.
+FIRST_PERSON_POSSESSIVE = re.compile(r"\b(?:mein\w*|my)\b", re.IGNORECASE)
+POSSESSIVE_IDIOM = re.compile(
+    r"\b(?:mein\w*|my)\s+(?:Interesse|Aufmerksamkeit|Bewerbung|Unterlagen|Lebenslauf|interest|"
+    r"attention|application)\b",
+    re.IGNORECASE,
+)
+FIRST_PERSON_SUBJECT = re.compile(r"(?i:\bich\b)|\bI\b")
+FIRST_PERSON_OBJECT = re.compile(r"\b(?:mich|mir|me|myself)\b", re.IGNORECASE)
+DOING_VERB = re.compile(
+    r"\b(?:arbeite|arbeitete|gearbeitet|nutze|genutzt|verwende|verwendet|setze|eingesetzt|"
+    r"entwickle|entwickelt|entwickelte|baue|gebaut|baute|bringe|mitbringe|einbringe|kenne|"
+    r"beherrsche|betreue|verantworte|gestalte|gestaltet|umgesetzt|realisiert|implementiert|"
+    r"programmiere|programmiert|beschäftige|beschäftigt|praktiziere|erfahrung|erfahren|"
+    r"vertraut|geläufig|bereits|schon|"
+    r"work|worked|working|use|used|using|build|built|develop|developed|experience|experienced|"
+    r"familiar|already|know)\b",
+    re.IGNORECASE,
+)
+ACQUAINTANCE = re.compile(r"\b(?:vertraut|geläufig|familiar)\b", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -177,15 +213,24 @@ def check_letter(
     names it mentions, and so is the project inside that position. A sentence that names
     neither continues the one before it in the same paragraph; the first sentence of a
     paragraph that names nothing is held to the master CV as a whole.
+
+    The body starts with the salutation; the paragraph after it is the opening, which
+    describes the posting and the company. Of the opening, only the sentences that speak of
+    the candidate are checked (see `claims_about_candidate`).
     """
     master = _read_master(master_markdown)
     findings = _Findings(master, posting_terms, allowed_text, posting_names)
 
-    for paragraph in re.split(r"\n\s*\n", letter_markdown):
-        findings.no_mixing(paragraph, what="one paragraph")
+    paragraphs = [part for part in re.split(r"\n\s*\n", letter_markdown) if part.strip()]
+    for index, paragraph in enumerate(paragraphs):
+        sentences = _sentences(paragraph)
+        if index == INTRO_INDEX:
+            sentences = [sentence for sentence in sentences if claims_about_candidate(sentence)]
+        else:
+            findings.no_mixing(paragraph, what="one paragraph")
         entries: list[_Entry] = []
         units: dict[str, list[_Unit]] = {}
-        for sentence in _sentences(paragraph):
+        for sentence in sentences:
             mentioned = _mentioned(sentence, master.entries)
             if mentioned:
                 entries, units = mentioned, {}
@@ -206,6 +251,20 @@ def check_letter(
     return findings.result()
 
 
+def claims_about_candidate(sentence: str) -> bool:
+    """Whether a sentence of the letter's opening says something about the candidate.
+
+    "An dieser Schnittstelle arbeite ich bereits" and "Next.js ist mir vertraut" do; "mit
+    großem Interesse habe ich Ihre Ausschreibung gelesen" and "eine Kombination, die mich
+    anspricht" describe the posting, whatever terms they carry.
+    """
+    return bool(
+        FIRST_PERSON_POSSESSIVE.search(POSSESSIVE_IDIOM.sub(" ", sentence))
+        or (FIRST_PERSON_SUBJECT.search(sentence) and DOING_VERB.search(sentence))
+        or (FIRST_PERSON_OBJECT.search(sentence) and ACQUAINTANCE.search(sentence))
+    )
+
+
 class _Findings:
     def __init__(
         self, master: _Master, posting_terms: list[str], allowed_text: str, posting_names: Sequence[str]
@@ -213,13 +272,7 @@ class _Findings:
         self.master = master
         self.posting_names = _name_forms(posting_names)
         self.allowed_numbers = _numbers(allowed_text)
-        master_spaced = _normalize(master.text)
-        self.imported = [
-            term
-            for term in posting_terms
-            if len(term.split()) <= MAX_POSTING_TERM_WORDS
-            and not _is_supported(term, master_spaced, master_spaced.replace(" ", ""))
-        ]
+        self.imported = _imported_terms(posting_terms, master.text)
         self._found: list[str] = []
 
     def add(self, finding: str) -> None:
@@ -301,6 +354,28 @@ class _Findings:
             elif holds(entry.text):
                 places.append(f"'{entry.name}'")
         return "; ".join(places) if places else "its summary or skills section"
+
+
+def _imported_terms(posting_terms: list[str], master_markdown: str) -> list[str]:
+    """The posting's terms the master CV does not back — the ones a model imports.
+
+    A term of several parts ("Next.js / React") is backed when each part is; the parts the
+    master CV lacks are what is looked for, so "Next.js / Vue" looks for "Vue". A part too
+    short to stand alone ("CI/CD", "UI/UX") keeps the term whole.
+    """
+    spaced = _normalize(master_markdown)
+    squashed = spaced.replace(" ", "")
+    imported: list[str] = []
+    for term in posting_terms:
+        if len(term.split()) > MAX_POSTING_TERM_WORDS:
+            continue
+        parts = [part.strip() for part in term.split(TERM_PART_SEPARATOR) if part.strip()]
+        if len(parts) < 2 or any(len(part) < MIN_TERM_LENGTH for part in parts):
+            parts = [term]
+        for part in parts:
+            if part not in imported and not _is_supported(part, spaced, squashed):
+                imported.append(part)
+    return imported
 
 
 def sentence_unit(sentence: str, context: str, master_markdown: str) -> str | None:

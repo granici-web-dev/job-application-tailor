@@ -481,6 +481,8 @@ button {
   background: var(--error-surface);
   border-color: #fda29b;
   color: var(--error);
+  /* The fact check's findings and the last draft come as lines; keep them so. */
+  white-space: pre-wrap;
 }
 
 .inline-error {
